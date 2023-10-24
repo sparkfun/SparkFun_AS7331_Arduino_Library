@@ -18,7 +18,7 @@
 typedef enum {
     // 0x00X invalid
     DEVICE_MODE_CFG = 0x010,
-    DEVICE_MODE_MEAS
+    DEVICE_MODE_MEAS = 0x011
     // 0x1XX invalid
 } as7331_device_op_state_t;
 
@@ -46,22 +46,6 @@ typedef enum {
     GAIN_2,
     GAIN_1
 } as7331_gain_t;
-
-typedef enum {
-    PRESCALE_1,
-    PRESCALE_2,
-    PRESCALE_3,
-    PRESCALE_4,
-    PRESCALE_5,
-    PRESCALE_6,
-    PRESCALE_7,
-    PRESCALE_8
-} as7331_prescale_range_t;
-
-typedef enum {
-    PRESCALE_DISABLED = 0x0,
-    PRESCALE_ENABLED
-} as7331_prescale_enable_t;
 
 typedef enum {
     SYN_TEMP_DISABLED = 0x0,
@@ -96,6 +80,40 @@ typedef enum {
     INDEX_NO_REPEAT_START = 0x0,
     INDEX_REPEAT_START
 } as7331_simple_reg_read_mode_t;
+
+typedef enum {
+    TIME_1MS = 0x0,
+    TIME_2MS,
+    TIME_4MS,
+    TIME_8MS,
+    TIME_16MS,
+    TIME_32MS,
+    TIME_64MS,
+    TIME_128MS,
+    TIME_256MS,
+    TIME_512MS,
+    TIME_1024MS,
+    TIME_2048MS,
+    TIME_4096MS,
+    TIME_8192MS,
+    TIME_16384MS
+} as7331_conv_time_t;
+
+typedef enum {
+    DIVIDER_DISABLED = 0x0,
+    DIVIDER_ENABLED = 0x1
+} as7331_divider_enable_t;
+
+typedef enum {
+    DIV_2 = 0x0,
+    DIV_4,
+    DIV_8,
+    DIV_16,
+    DIV_32,
+    DIV_64,
+    DIV_128,
+    DIV_256
+} as7331_divider_val_t;
 
 /// Configuration Registers
 // These registers can only be accessed in the configuration state, and they
