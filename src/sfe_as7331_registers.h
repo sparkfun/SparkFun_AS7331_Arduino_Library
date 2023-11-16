@@ -1,3 +1,9 @@
+/*
+  SPDX-License-Identifier: MIT
+
+  Copyright (c) 2023 SparkFun Electronics
+
+*/
 
 #pragma once
 #include <stdint.h>
@@ -266,4 +272,3 @@ typedef union {
     };
     uint16_t word;
 } sfe_as7331_reg_meas_outconv_h_t;
-
