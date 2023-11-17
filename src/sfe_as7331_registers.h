@@ -22,10 +22,10 @@
 /// Enum Settings
 
 typedef enum {
-    // 0x00X invalid
-    DEVICE_MODE_CFG = 0x010,
-    DEVICE_MODE_MEAS = 0x011
-    // 0x1XX invalid
+    // 0b00X invalid
+    DEVICE_MODE_CFG = 0x2,
+    DEVICE_MODE_MEAS = 0x3
+    // 0b1XX invalid
 } as7331_device_op_state_t;
 
 typedef enum {

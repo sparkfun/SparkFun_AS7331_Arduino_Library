@@ -131,9 +131,11 @@ class SfeAS7331Base {
             if(SFE_BUS_OK != _sfeBus->ping(_devSettings))
                 return false;
             
+            reset();
+
             if(!isConnected())
                 return false;
-            
+
             if(runSetup)
                 return runDefaultSetup();
             
@@ -237,6 +239,9 @@ class SfeAS7331Base {
         {
             if(_state.pd == POWER_DOWN_ENABLE)
                 if(SFE_BUS_OK != setPowerState(POWER_DOWN_DISABLE)) return false;
+
+            if(_state.opMode != DEVICE_MODE_MEAS)
+                if(SFE_BUS_OK != setOperationMode(DEVICE_MODE_MEAS)) return false;
 
             if(_state.mmode != measMode)
             {
@@ -351,19 +356,7 @@ class SfeAS7331Base {
             if(SFE_BUS_OK != result)
                 return result;
 
-            Serial.print("Raw values: uvaRaw[1] = 0x");
-            Serial.print(uvaRaw[1], HEX);
-            Serial.print(", uvaRaw[0] = 0x");
-            Serial.print(uvaRaw[0], HEX);
-            Serial.print(", uvaRaw[1] << 8 | uvaRaw[0] = ");
-            Serial.print(((uint16_t)uvaRaw[1] << 8 | uvaRaw[0]), HEX);
-            Serial.print(", as a float = ");
-            Serial.print((float)((uint16_t)((uint16_t)uvaRaw[1] << 8 | uvaRaw[0])), 5);
-            Serial.print(", conversionA = ");
-            Serial.print(conversionA);
-            Serial.print(", measures.uva = ");
-            measures.uva = ((float)((uint16_t)((uint16_t)uvaRaw[1] << 8 | uvaRaw[0])))*conversionA;
-            Serial.println(measures.uva, 5);
+            measures.uva = ((float)((uint16_t)((uint16_t)uvaRaw[1] << 8 | uvaRaw[0]))-1.0f)*conversionA;
             
             return SFE_BUS_OK;
         }
@@ -378,7 +371,7 @@ class SfeAS7331Base {
             if(SFE_BUS_OK != result)
                 return result;
 
-            measures.uvb = ((float)((uint16_t)((uint16_t)uvbRaw[1] << 8 | uvbRaw[0])))*conversionB;
+            measures.uvb = ((float)((uint16_t)((uint16_t)uvbRaw[1] << 8 | uvbRaw[0]))-1.0f)*conversionB;
             
             return SFE_BUS_OK;
         }
@@ -393,7 +386,7 @@ class SfeAS7331Base {
             if(SFE_BUS_OK != result)
                 return result;
 
-            measures.uvc = ((float)((uint16_t)((uint16_t)uvcRaw[1] << 8 | uvcRaw[0])))*conversionC;
+            measures.uvc = ((float)((uint16_t)((uint16_t)uvcRaw[1] << 8 | uvcRaw[0]))-1.0f)*conversionC;
 
             return SFE_BUS_OK;
         }
@@ -408,9 +401,9 @@ class SfeAS7331Base {
             if(SFE_BUS_OK != result)
                 return result;
 
-            measures.uva = (float)((uint16_t)(((uint16_t)dataRaw[1]) << 8 | dataRaw[0]))*conversionA;
-            measures.uvb = (float)((uint16_t)(((uint16_t)dataRaw[3]) << 8 | dataRaw[2]))*conversionB;
-            measures.uvc = (float)((uint16_t)(((uint16_t)dataRaw[5]) << 8 | dataRaw[4]))*conversionC;
+            measures.uva = (float)((uint16_t)(((uint16_t)dataRaw[1]) << 8 | dataRaw[0])-1.0f)*conversionA;
+            measures.uvb = (float)((uint16_t)(((uint16_t)dataRaw[3]) << 8 | dataRaw[2])-1.0f)*conversionB;
+            measures.uvc = (float)((uint16_t)(((uint16_t)dataRaw[5]) << 8 | dataRaw[4])-1.0f)*conversionC;
 
             return SFE_BUS_OK;
         }
@@ -948,105 +941,90 @@ class SfeAS7331Base {
 
         int8_t getStatus(sfe_as7331_reg_meas_osr_status_t *statusReg)
         {
-            // TODO: Add state check
             return readRegister(SFE_AS7331_REGISTER_MEAS_OSR_STATUS, statusReg, 2U);
         }
 
 
         int8_t getOSR(sfe_as7331_reg_cfg_osr_t *osrReg)
         {
-            // TODO: Add state check
             return readRegister(SFE_AS7331_REGISTER_CFG_OSR, &osrReg->byte);
         }
 
 
         int8_t setOSR(const sfe_as7331_reg_cfg_osr_t *osrReg)
         {
-            // TODO: Add state check
             return writeRegister(SFE_AS7331_REGISTER_CFG_OSR, &osrReg->byte);
         }
 
 
         int8_t getCReg1(sfe_as7331_reg_cfg_creg1_t *creg1)
         {
-            // TODO: Add state check
             return readRegister(SFE_AS7331_REGISTER_CFG_CREG1, &creg1->byte);
         }
 
 
         int8_t setCReg1(const sfe_as7331_reg_cfg_creg1_t *creg1)
         {
-            // TODO: Add state check
             return writeRegister(SFE_AS7331_REGISTER_CFG_CREG1, &creg1->byte);
         }
 
 
         int8_t getCReg2(sfe_as7331_reg_cfg_creg2_t *creg2)
         {
-            // TODO: Add state check
             return readRegister(SFE_AS7331_REGISTER_CFG_CREG2, &creg2->byte);
         }
 
 
         int8_t setCReg2(const sfe_as7331_reg_cfg_creg2_t *creg2)
         {
-            // TODO: Add state check
             return writeRegister(SFE_AS7331_REGISTER_CFG_CREG2, &creg2->byte);
         }
 
 
         int8_t getCReg3(sfe_as7331_reg_cfg_creg3_t *creg3)
         {
-            // TODO: Add state check
             return readRegister(SFE_AS7331_REGISTER_CFG_CREG3, &creg3->byte);
         }
 
 
         int8_t setCReg3(const sfe_as7331_reg_cfg_creg3_t *creg3)
         {
-            // TODO: Add state check
             return writeRegister(SFE_AS7331_REGISTER_CFG_CREG3, &creg3->byte);
         }
 
 
         int8_t getBreak(sfe_as7331_reg_cfg_break_t *breakReg)
         {
-            // TODO: Add state check
             return readRegister(SFE_AS7331_REGISTER_CFG_BREAK, breakReg);
         }
 
 
         int8_t setBreak(const sfe_as7331_reg_cfg_break_t *breakReg)
         {
-            // TODO: Add state check
             return writeRegister(SFE_AS7331_REGISTER_CFG_BREAK, breakReg);
         }
 
 
         int8_t getEdges(sfe_as7331_reg_cfg_edges_t *edgesReg)
         {
-            // TODO: Add state check
             return readRegister(SFE_AS7331_REGISTER_CFG_EDGES, edgesReg);
         }
 
 
         int8_t setEdges(const sfe_as7331_reg_cfg_edges_t *edgesReg)
         {
-            // TODO: Add state check
             return writeRegister(SFE_AS7331_REGISTER_CFG_EDGES, edgesReg);
         }
 
 
         int8_t getOptIndex(sfe_as7331_reg_cfg_optreg_t *optReg)
         {
-            // TODO: Add state check
             return readRegister(SFE_AS7331_REGISTER_CFG_OPTREG, &optReg->byte);
         }
 
 
         int8_t setOptIndex(const sfe_as7331_reg_cfg_optreg_t *optReg)
         {
-            // TODO: Add state check
             return writeRegister(SFE_AS7331_REGISTER_CFG_OPTREG, &optReg->byte);
         }
 
