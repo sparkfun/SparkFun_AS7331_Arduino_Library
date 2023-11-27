@@ -31,13 +31,6 @@ void setup() {
 
   Serial.println("Sensor began.");
 
-  // // Set break time to 900us (112 * 8us) to account for the time it takes to poll data.
-  // if(SFE_BUS_OK != myUVSensor.setBreakTime(112)) {
-  //   Serial.println("Sensor did not set break time properly.");
-  //   Serial.println("Spinning...");
-  //   while(1);
-  // }
-
   // Set measurement mode and change device operating mode to measure.
   if(myUVSensor.startMeasurement(MEAS_MODE_SYNS) == false) {
     Serial.println("Sensor did not get set properly.");
