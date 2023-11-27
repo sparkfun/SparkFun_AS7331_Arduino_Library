@@ -279,9 +279,6 @@ class SfeAS7331Base {
             if(_state.pd == POWER_DOWN_ENABLE)
                 if(SFE_BUS_OK != setPowerState(POWER_DOWN_DISABLE)) return false;
 
-            if(_state.opMode != DEVICE_MODE_MEAS)
-                if(SFE_BUS_OK != setOperationMode(DEVICE_MODE_MEAS)) return false;
-
             if(_state.mmode != measMode)
             {
                 if(SFE_BUS_OK != setStandbyMode(STANDBY_DISABLED)) 
@@ -289,6 +286,9 @@ class SfeAS7331Base {
                 if(SFE_BUS_OK != setMeasurementMode(measMode)) 
                     return false;
             }
+
+            if(_state.opMode != DEVICE_MODE_MEAS)
+                if(SFE_BUS_OK != setOperationMode(DEVICE_MODE_MEAS)) return false;
 
             if(startMeasure)
                 if(SFE_BUS_OK != setStartStateMode(START_STATE_ENABLED)) return false;
@@ -1090,7 +1090,17 @@ class SfeAS7331Base {
         /// @return 0 if successful, negative if error, positive for warning.
         int8_t getStatus(sfe_as7331_reg_meas_osr_status_t *statusReg)
         {
-            return readRegister(SFE_AS7331_REGISTER_MEAS_OSR_STATUS, statusReg, 2U);
+            int8_t result = SFE_BUS_OK;
+            uint8_t statusRaw[2];
+
+            result = readRegister(SFE_AS7331_REGISTER_MEAS_OSR_STATUS, statusRaw, 2U);
+
+            if(SFE_BUS_OK != result)
+                return result;
+            
+            statusReg->word = ((uint16_t)statusRaw[1] << 8) | statusRaw[0];
+
+            return SFE_BUS_OK;
         }
 
         /// @brief Gets the operational state register when in configuration operation mode.

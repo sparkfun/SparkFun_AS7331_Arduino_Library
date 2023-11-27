@@ -32,7 +32,7 @@ void loop() {
   if(SFE_BUS_OK != myUVSensor.setStartStateMode(START_STATE_ENABLED))
     Serial.println("Error starting reading!");
   
-  delay((1 << myUVSensor.getConfigConversionTime()));
+  delay(2+(1 << myUVSensor.getConfigConversionTime()));
 
   if(SFE_BUS_OK != myUVSensor.readAllUV())
     Serial.println("Error reading UV.");
