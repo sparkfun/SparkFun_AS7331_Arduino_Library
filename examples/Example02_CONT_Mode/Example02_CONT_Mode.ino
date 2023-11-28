@@ -1,3 +1,28 @@
+/*
+  Using the AMS AS7331 Spectral UV Sensor in Continuous (CONT) Mode.
+
+  This example shows how operate the AS7331 in CONT mode. The break time
+  register sets the delay between measurements so that the processor can read
+  out the results without interfering with the ADC.
+
+  By: Alex Brudner
+  SparkFun Electronics
+  Date: 2023/11/27
+  SparkFun code, firmware, and software is released under the MIT License.
+	Please see LICENSE.md for further details.
+
+  Hardware Connections:
+  IoT RedBoard --> AS7331
+  QWIIC --> QWIIC
+  26  --> INT
+
+  Serial.print it out at 115200 baud to serial monitor.
+
+  Feel like supporting our work? Buy a board from SparkFun!
+  https://www.sparkfun.com/products/23517 - Qwiic 1x1
+  https://www.sparkfun.com/products/23518 - Qwiic Mini
+*/
+
 #include "SparkFun_AS7331.h"
 
 SfeAS7331ArdI2C myUVSensor;
@@ -49,6 +74,7 @@ void setup() {
 
 void loop() {
 
+  // If an interrupt has been generated...
   if(newDataReady) {
     newDataReady = false;
 

@@ -1,3 +1,29 @@
+/*
+  Using the AMS AS7331 Spectral UV Sensor in Synchronous Start (SYNS) Mode.
+
+  This example shows how operate the AS7331 in SYNS mode. This uses the active 
+  low SYN pin to start the conversion and relies on an interrupt to signal the
+  end of conversion.
+
+  By: Alex Brudner
+  SparkFun Electronics
+  Date: 2023/11/27
+  SparkFun code, firmware, and software is released under the MIT License.
+	Please see LICENSE.md for further details.
+
+  Hardware Connections:
+  IoT RedBoard --> AS7331
+  QWIIC --> QWIIC
+  26  --> INT
+  27  --> SYN
+
+  Serial.print it out at 115200 baud to serial monitor.
+
+  Feel like supporting our work? Buy a board from SparkFun!
+  https://www.sparkfun.com/products/23517 - Qwiic 1x1
+  https://www.sparkfun.com/products/23518 - Qwiic Mini
+*/
+
 #include "SparkFun_AS7331.h"
 
 SfeAS7331ArdI2C myUVSensor;
@@ -38,12 +64,13 @@ void setup() {
     while(1);
   }
 
-  Serial.println("Set mode to synchronous. Starting measurement...");
+  Serial.println("Set mode to synchronous start (SYNS). Starting measurement...");
 
-  // Begin measurement.
+  // Set device to be ready to measure.
   if(SFE_BUS_OK != myUVSensor.setStartStateMode(START_STATE_ENABLED))
     Serial.println("Error starting reading!");
     
+  // Send start toggle.
   digitalWrite(synPin, LOW);
   delay(1);
   digitalWrite(synPin, HIGH);
@@ -52,12 +79,14 @@ void setup() {
 
 void loop() {
 
+  // If an interrupt has been generated...
   if(newDataReady) {
     newDataReady = false;
 
     if(SFE_BUS_OK != myUVSensor.readAllUV())
       Serial.println("Error reading UV.");
 
+    // Start next measurement
     digitalWrite(synPin, LOW);
     delay(1);
     digitalWrite(synPin, HIGH);
