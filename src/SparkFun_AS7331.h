@@ -408,7 +408,19 @@ class SfeAS7331Base {
             if(SFE_BUS_OK != result)
                 return result;
 
-            measures.uva = ((float)((uint16_t)((uint16_t)uvaRaw[1] << 8 | uvaRaw[0]))-1.0f)*_conversionA;
+            if(_state.mmode == MEAS_MODE_SYND) {
+                result = readOutConv();
+
+                if(SFE_BUS_OK != result)
+                    return result;
+
+                float divFactor = (bool)_config.dividerEnabled ? (float)(1 << (1+_config.dividerRange)) : 1.0f;
+                float convFactor = ((float)measures.outputConversionTime)*((float)(1 << (11 - _config.sensorGain)));
+                measures.uva = (float)((uint16_t)(((uint16_t)uvaRaw[1]) << 8 | uvaRaw[0])-1.0f)*fsrA*divFactor/convFactor;
+            }
+            else {
+                measures.uva = (float)((uint16_t)(((uint16_t)uvaRaw[1]) << 8 | uvaRaw[0])-1.0f)*_conversionA;
+            }
             
             return SFE_BUS_OK;
         }
@@ -424,7 +436,19 @@ class SfeAS7331Base {
             if(SFE_BUS_OK != result)
                 return result;
 
-            measures.uvb = ((float)((uint16_t)((uint16_t)uvbRaw[1] << 8 | uvbRaw[0]))-1.0f)*_conversionB;
+            if(_state.mmode == MEAS_MODE_SYND) {
+                result = readOutConv();
+
+                if(SFE_BUS_OK != result)
+                    return result;
+
+                float divFactor = (bool)_config.dividerEnabled ? (float)(1 << (1+_config.dividerRange)) : 1.0f;
+                float convFactor = ((float)measures.outputConversionTime)*((float)(1 << (11 - _config.sensorGain)));
+                measures.uvb = (float)((uint16_t)(((uint16_t)uvbRaw[1]) << 8 | uvbRaw[0])-1.0f)*fsrB*divFactor/convFactor;
+            }
+            else {
+                measures.uvb = (float)((uint16_t)(((uint16_t)uvbRaw[1]) << 8 | uvbRaw[0])-1.0f)*_conversionB;
+            }
             
             return SFE_BUS_OK;
         }
@@ -440,7 +464,19 @@ class SfeAS7331Base {
             if(SFE_BUS_OK != result)
                 return result;
 
-            measures.uvc = ((float)((uint16_t)((uint16_t)uvcRaw[1] << 8 | uvcRaw[0]))-1.0f)*_conversionC;
+            if(_state.mmode == MEAS_MODE_SYND) {
+                result = readOutConv();
+
+                if(SFE_BUS_OK != result)
+                    return result;
+
+                float divFactor = (bool)_config.dividerEnabled ? (float)(1 << (1+_config.dividerRange)) : 1.0f;
+                float convFactor = ((float)measures.outputConversionTime)*((float)(1 << (11 - _config.sensorGain)));
+                measures.uvc = (float)((uint16_t)(((uint16_t)uvcRaw[1]) << 8 | uvcRaw[0])-1.0f)*fsrC*divFactor/convFactor;
+            }
+            else {
+                measures.uvc = (float)((uint16_t)(((uint16_t)uvcRaw[1]) << 8 | uvcRaw[0])-1.0f)*_conversionC;
+            }
 
             return SFE_BUS_OK;
         }
@@ -456,9 +492,23 @@ class SfeAS7331Base {
             if(SFE_BUS_OK != result)
                 return result;
 
-            measures.uva = (float)((uint16_t)(((uint16_t)dataRaw[1]) << 8 | dataRaw[0])-1.0f)*_conversionA;
-            measures.uvb = (float)((uint16_t)(((uint16_t)dataRaw[3]) << 8 | dataRaw[2])-1.0f)*_conversionB;
-            measures.uvc = (float)((uint16_t)(((uint16_t)dataRaw[5]) << 8 | dataRaw[4])-1.0f)*_conversionC;
+            if(_state.mmode == MEAS_MODE_SYND) {
+                result = readOutConv();
+
+                if(SFE_BUS_OK != result)
+                    return result;
+
+                float divFactor = (bool)_config.dividerEnabled ? (float)(1 << (1+_config.dividerRange)) : 1.0f;
+                float convFactor = ((float)measures.outputConversionTime)*((float)(1 << (11 - _config.sensorGain)));
+                measures.uva = (float)((uint16_t)(((uint16_t)dataRaw[1]) << 8 | dataRaw[0])-1.0f)*fsrA*divFactor/convFactor;
+                measures.uvb = (float)((uint16_t)(((uint16_t)dataRaw[3]) << 8 | dataRaw[2])-1.0f)*fsrB*divFactor/convFactor;
+                measures.uvc = (float)((uint16_t)(((uint16_t)dataRaw[5]) << 8 | dataRaw[4])-1.0f)*fsrC*divFactor/convFactor;
+            }
+            else {
+                measures.uva = (float)((uint16_t)(((uint16_t)dataRaw[1]) << 8 | dataRaw[0])-1.0f)*_conversionA;
+                measures.uvb = (float)((uint16_t)(((uint16_t)dataRaw[3]) << 8 | dataRaw[2])-1.0f)*_conversionB;
+                measures.uvc = (float)((uint16_t)(((uint16_t)dataRaw[5]) << 8 | dataRaw[4])-1.0f)*_conversionC;
+            }
 
             return SFE_BUS_OK;
         }
@@ -467,18 +517,31 @@ class SfeAS7331Base {
         /// @return 0 if successful, negative if error, positive for warning.
         int8_t readAll(void)
         {
-            uint8_t dataRaw[12];
+            uint8_t dataRaw[8];
 
-            int8_t result = readRegister(SFE_AS7331_REGISTER_MEAS_TEMP, dataRaw, 12U);
+            int8_t result = readRegister(SFE_AS7331_REGISTER_MEAS_TEMP, dataRaw, 8U);
 
             if(SFE_BUS_OK != result)
                 return result;
 
-            measures.uva = (float)((uint16_t)(((uint16_t)dataRaw[1]) << 8 | dataRaw[0]))*_conversionA;
-            measures.uvb = (float)((uint16_t)(((uint16_t)dataRaw[3]) << 8 | dataRaw[2]))*_conversionB;
-            measures.uvc = (float)((uint16_t)(((uint16_t)dataRaw[5]) << 8 | dataRaw[4]))*_conversionC;
-            measures.temperature = convertRawTempToTempC((uint16_t)(((uint16_t)dataRaw[7] << 8 | dataRaw[6])));
-            measures.outputConversionTime = (uint32_t)(((uint32_t)dataRaw[11] << 24) | ((uint32_t)dataRaw[10] << 16) | ((uint32_t)dataRaw[9] << 8) | dataRaw[8]);
+            result = readOutConv();
+            if(SFE_BUS_OK != result)
+                return result;
+
+            if(_state.mmode == MEAS_MODE_SYND) {
+                float divFactor = (bool)_config.dividerEnabled ? (float)(1 << (1+_config.dividerRange)) : 1.0f;
+                float convFactor = ((float)measures.outputConversionTime)*((float)(1 << (11 - _config.sensorGain)));
+                measures.uva = (float)((uint16_t)(((uint16_t)dataRaw[3]) << 8 | dataRaw[2])-1.0f)*fsrA*divFactor/convFactor;
+                measures.uvb = (float)((uint16_t)(((uint16_t)dataRaw[5]) << 8 | dataRaw[4])-1.0f)*fsrB*divFactor/convFactor;
+                measures.uvc = (float)((uint16_t)(((uint16_t)dataRaw[7]) << 8 | dataRaw[6])-1.0f)*fsrC*divFactor/convFactor;
+            }
+            else {
+                measures.uva = (float)((uint16_t)(((uint16_t)dataRaw[3]) << 8 | dataRaw[2])-1.0f)*_conversionA;
+                measures.uvb = (float)((uint16_t)(((uint16_t)dataRaw[5]) << 8 | dataRaw[4])-1.0f)*_conversionB;
+                measures.uvc = (float)((uint16_t)(((uint16_t)dataRaw[7]) << 8 | dataRaw[6])-1.0f)*_conversionC;
+            }
+
+            measures.temperature = convertRawTempToTempC((uint16_t)(((uint16_t)dataRaw[1] << 8 | dataRaw[0])));            
 
             return SFE_BUS_OK;
         }
@@ -1222,11 +1285,11 @@ class SfeAS7331Base {
         /// @brief Converts the raw temperature value to a human readable form.
         /// @param inputVal Raw temperature value to convert.
         /// @return The converted device temperature in degree C.
-        float convertRawTempToTempC(const uint16_t *inputVal)
+        float convertRawTempToTempC(const uint16_t inputVal)
         {
             // T_chip = TEMP*0.05 - 66.9
             // EX: TEMP=0x922 aka TEMP=0d2338, returns 50.0
-            return ((float)(*inputVal) * 0.05f) - 66.9f;
+            return ((float)(inputVal) * 0.05f) - 66.9f;
         }
 
         /// @brief Called when changing values that affect the conversion, calculates a new conversion factor to reduce the conversion overhead.
