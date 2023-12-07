@@ -275,7 +275,14 @@ const uint8_t kSfeAS7331RegMeasOutConvH = 0x06; // LSB is MSB of OUTCONV, MSB is
 class SfeAS7331Driver
 {
   public:
-    SfeAS7331Driver(uint8_t address = kDefaultAS7331Addr) : _address{address}
+    // Default initialization values based on the datasheet. See SfeAS7331Driver::setDefaultSettings for
+    // an explanation of the values.
+    SfeAS7331Driver(uint8_t address = kDefaultAS7331Addr)
+        : _address{address}, _breakTime{25}, _numEdges{1}, _readyPinMode{false}, _dividerEnabled{false},
+          _tempConvEnabled{true}, _indexMode{true}, _standbyState{false}, _startState{false},
+          _powerDownEnableState{true}, _opMode{DEVICE_MODE_CFG}, _sensorGain{GAIN_2}, _cclk{CCLK_1_024_MHZ},
+          _mmode{MEAS_MODE_CMD}, _conversionTime{TIME_64MS}, _dividerRange{DIV_2}, _uva{0.0f}, _uvb{0.0f}, _uvc{0.0f},
+          _temperature{0.0f}, _outputConversionTime{0U}, _conversionA{0.0f}, _conversionB{0.0f}, _conversionC{0.0f}
     {
     }
 
