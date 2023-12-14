@@ -24,11 +24,11 @@
   https://www.sparkfun.com/products/23518 - Qwiic Mini
 */
 
-#include "SparkFun_AS7331.h"
+#include <Arduino.h>
+#include <Wire.h>
+#include <SparkFun_AS7331.h>
 
 SfeAS7331ArdI2C myUVSensor;
-
-int8_t result = SFE_BUS_OK;
 
 const uint8_t synPin = 27;
 
@@ -36,6 +36,8 @@ void setup() {
   Serial.begin(115200);
   while(!Serial){delay(100);};
   Serial.println("AS7331 UV A/B/C Synchronous Start and End (SYND) mode example.");
+
+  Wire.begin();
 
   // Configure SYN pin.
   pinMode(synPin, OUTPUT);
@@ -51,7 +53,7 @@ void setup() {
   Serial.println("Sensor began.");
 
   // Set measurement mode and change device operating mode to measure.
-  if(myUVSensor.startMeasurement(MEAS_MODE_SYND) == false) {
+  if(myUVSensor.prepareMeasurement(MEAS_MODE_SYND) == false) {
     Serial.println("Sensor did not get set properly.");
     Serial.println("Spinning...");
     while(1);
@@ -60,7 +62,7 @@ void setup() {
   Serial.println("Set mode to synchronous start/end (SYND). Starting measurement...");
 
   // Set device to be ready to measure.
-  if(SFE_BUS_OK != myUVSensor.setStartStateMode(START_STATE_ENABLED))
+  if(kSTkErrOk != myUVSensor.setStartState(true))
     Serial.println("Error starting reading!");
     
   // Send start toggle.
@@ -79,15 +81,15 @@ void loop() {
   delay(1);
   digitalWrite(synPin, HIGH);
 
-  if(SFE_BUS_OK != myUVSensor.readAllUV())
+  if(kSTkErrOk != myUVSensor.readAllUV())
     Serial.println("Error reading UV.");
 
   Serial.print("UVA:");
-  Serial.print(myUVSensor.measures.uva);
+  Serial.print(myUVSensor.getUVA());
   Serial.print(" UVB:");
-  Serial.print(myUVSensor.measures.uvb);
+  Serial.print(myUVSensor.getUVB());
   Serial.print(" UVC:");
-  Serial.println(myUVSensor.measures.uvc);
+  Serial.println(myUVSensor.getUVC());
 
   // Start next measurement.
   digitalWrite(synPin, LOW);

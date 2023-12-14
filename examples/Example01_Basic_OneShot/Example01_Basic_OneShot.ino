@@ -22,65 +22,58 @@
   https://www.sparkfun.com/products/23518 - Qwiic Mini
 */
 
-#include "SparkFun_AS7331.h"
+#include <Arduino.h>
+#include <Wire.h>
+#include <SparkFun_AS7331.h>
+
+SfeAS7331ArdI2C myUVSensor;
 
 void setup() {
+  Serial.begin(115200);
+  while(!Serial){delay(100);};
+  Serial.println("AS7331 UV A/B/C Command (One-shot) mode Example.");
 
+  Wire.begin();
+
+  // Initialize sensor and run default setup.
+  if(myUVSensor.begin() == false) {
+    Serial.println("Sensor failed to begin. Please check your wiring!");
+    Serial.println("Spinning...");
+    while(1);
+  }
+
+  Serial.println("Sensor began.");
+
+  // Set measurement mode and change device operating mode to measure.
+  if(myUVSensor.prepareMeasurement(MEAS_MODE_CMD) == false) {
+    Serial.println("Sensor did not get set properly.");
+    Serial.println("Spinning...");
+    while(1);
+  }
+
+  Serial.println("Set mode to command.");
 }
 
 void loop() {
   
+  // Send a start measurement command.
+  if(kSTkErrOk != myUVSensor.setStartState(true))
+    Serial.println("Error starting reading!");
+  
+  // Wait for a bit longer than the conversion time.
+  delay(2+(1 << myUVSensor.getConversionTime()));
+
+  // Read UV values.
+  if(kSTkErrOk != myUVSensor.readAllUV())
+    Serial.println("Error reading UV.");
+
+  Serial.print("UVA:");
+  Serial.print(myUVSensor.getUVA());
+  Serial.print(" UVB:");
+  Serial.print(myUVSensor.getUVB());
+  Serial.print(" UVC:");
+  Serial.println(myUVSensor.getUVC());
+
+  delay(2000);
+
 }
-
-// SfeAS7331ArdI2C myUVSensor;
-
-// int8_t result = SFE_BUS_OK;
-
-// void setup() {
-//   Serial.begin(115200);
-//   while(!Serial){delay(100);};
-//   Serial.println("UV LED Example.");
-
-//   // Initialize sensor and run default setup.
-//   if(myUVSensor.begin() == false) {
-//     Serial.println("Sensor failed to begin. Please check your wiring!");
-//     Serial.println("Spinning...");
-//     while(1);
-//   }
-
-//   Serial.println("Sensor began.");
-
-//   // Set measurement mode and change device operating mode to measure.
-//   if(myUVSensor.startMeasurement(MEAS_MODE_CMD) == false) {
-//     Serial.println("Sensor did not get set properly.");
-//     Serial.println("Spinning...");
-//     while(1);
-//   }
-
-//   Serial.println("Set mode to command.");
-
-// }
-
-// void loop() {
-  
-//   // Send a start measurement command.
-//   if(SFE_BUS_OK != myUVSensor.setStartStateMode(START_STATE_ENABLED))
-//     Serial.println("Error starting reading!");
-  
-//   // Wait for a bit longer than the conversion time.
-//   delay(2+(1 << myUVSensor.getConfigConversionTime()));
-
-//   // Read UV values.
-//   if(SFE_BUS_OK != myUVSensor.readAllUV())
-//     Serial.println("Error reading UV.");
-
-//   Serial.print("UVA:");
-//   Serial.print(myUVSensor.measures.uva);
-//   Serial.print(" UVB:");
-//   Serial.print(myUVSensor.measures.uvb);
-//   Serial.print(" UVC:");
-//   Serial.println(myUVSensor.measures.uvc);
-
-//   delay(2000);
-
-// };
