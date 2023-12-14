@@ -701,6 +701,9 @@ class SfeAS7331ArdI2C : public SfeAS7331Driver
         if (_theI2CBus.init(address) != kSTkErrOk)
             return false;
 
+        // Device supports repeat starts, enable it.
+        _theI2CBus.setStop(false);
+
         setCommunicationBus(&_theI2CBus);
 
         if (!reset())
