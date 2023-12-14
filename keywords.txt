@@ -1,0 +1,121 @@
+# Syntax Coloring Map for SparkFun AS7331 Arduino Library
+
+# Datatypes (KEYWORD1)  
+as7331_dev_op_state_t   KEYWORD1
+as7331_gain_t           KEYWORD1
+as7331_conv_clk_freq_t  KEYWORD1
+as7331_meas_mode_t      KEYWORD1
+as7331_conv_time_t      KEYWORD1
+as7331_divider_val_t    KEYWORD1
+as7331_uv_type          KEYWORD1
+
+# Methods and Functions (KEYWORD2)
+begin                           KEYWORD2
+getDeviceID                     KEYWORD2
+setCommunicationBus             KEYWORD2
+setDeviceAddress                KEYWORD2
+getDeviceAddress                KEYWORD2
+runDefaultSetup                 KEYWORD2
+prepareMeasurement              KEYWORD2
+reset                           KEYWORD2
+readTemp                        KEYWORD2
+readUVA                         KEYWORD2
+readUVB                         KEYWORD2
+readUVC                         KEYWORD2
+readAllUV                       KEYWORD2
+readAll                         KEYWORD2
+readOutConv                     KEYWORD2
+getUVA                          KEYWORD2
+getUVB                          KEYWORD2
+getUVC                          KEYWORD2
+getTemp                         KEYWORD2
+getOutConv                      KEYWORD2
+getGain                         KEYWORD2
+setGain                         KEYWORD2
+getCClk                         KEYWORD2
+setCClk                         KEYWORD2
+getConversionTime               KEYWORD2
+setConversionTime               KEYWORD2
+getReadyPinMode                 KEYWORD2
+setReadyPinMode                 KEYWORD2
+getDigitalDividerEnabled        KEYWORD2
+setDigitalDividerEnabled        KEYWORD2
+getDigitalDividerRange          KEYWORD2
+setDigitalDividerRange          KEYWORD2
+getSyndTempConversionEnabled    KEYWORD2
+setSyndTempConversionEnabled    KEYWORD2
+getIndexMode                    KEYWORD2
+setIndexMode                    KEYWORD2
+getBreakTime                    KEYWORD2
+setBreakTime                    KEYWORD2
+getNumEdges                     KEYWORD2
+setNumEdges                     KEYWORD2
+getPowerDownState               KEYWORD2
+setPowerDownState               KEYWORD2
+getOperationMode                KEYWORD2
+setOperationMode                KEYWORD2
+getMeasurementMode              KEYWORD2
+setMeasurementMode              KEYWORD2
+getStandbyState                 KEYWORD2
+setStandbyState                 KEYWORD2
+getStartState                   KEYWORD2
+setStartState                   KEYWORD2
+getStatus                       KEYWORD2
+getOSR                          KEYWORD2
+setOSR                          KEYWORD2
+getCReg1                        KEYWORD2
+setCReg1                        KEYWORD2
+getCReg2                        KEYWORD2
+setCReg2                        KEYWORD2
+getCReg3                        KEYWORD2
+setCReg3                        KEYWORD2
+getBreak                        KEYWORD2
+setBreak                        KEYWORD2
+getEdges                        KEYWORD2
+setEdges                        KEYWORD2
+getOptIndex                     KEYWORD2
+setOptIndex                     KEYWORD2
+readRawUV                       KEYWORD2
+convertRawTempToTempC           KEYWORD2
+convertRawUVVal                 KEYWORD2
+calculateConversionFactors      KEYWORD2
+setDefaultSettings              KEYWORD2
+isConnected                     KEYWORD2
+
+# Instances (KEYWORD2)
+
+
+# Structures (KEYWORD3)
+sfe_as7331_reg_cfg_osr_t            KEYWORD3
+sfe_as7331_reg_cfg_agen_t           KEYWORD3
+sfe_as7331_reg_cfg_creg1_t          KEYWORD3
+sfe_as7331_reg_cfg_creg2_t          KEYWORD3
+sfe_as7331_reg_cfg_creg3_t          KEYWORD3
+sfe_as7331_reg_cfg_optreg_t         KEYWORD3
+sfe_as7331_reg_meas_osr_status_t    KEYWORD3
+
+# Constants (LITERAL1)
+kDefaultAS7331Addr          LITERAL1
+kSecondaryAS7331Addr        LITERAL1
+kTertiaryAS7331Addr         LITERAL1
+kQuaternaryAS7331Addr       LITERAL1
+kDefaultAS7331DeviceID      LITERAL1
+kAS7331DeviceIDTopNibble    LITERAL1
+kSfeAS7331RegCfgOsr         LITERAL1
+kSfeAS7331RegCfgAgen        LITERAL1
+kSfeAS7331RegCfgCreg1       LITERAL1
+kSfeAS7331RegCfgCreg2       LITERAL1
+kSfeAS7331RegCfgCreg3       LITERAL1
+kSfeAS7331RegCfgBreak       LITERAL1
+kSfeAS7331RegCfgEdges       LITERAL1
+kSfeAS7331RegCfgOptReg      LITERAL1
+kSfeAS7331RegMeasOsrStatus  LITERAL1
+kSfeAS7331RegMeasTemp       LITERAL1
+kSfeAS7331RegMeasMres1      LITERAL1
+kSfeAS7331RegMeasMres2      LITERAL1
+kSfeAS7331RegMeasMres3      LITERAL1
+kSfeAS7331RegMeasOutConvL   LITERAL1
+kSfeAS7331RegMeasOutConvH   LITERAL1
+_fsrA                       LITERAL1
+_fsrB                       LITERAL1
+_fsrC                       LITERAL1
