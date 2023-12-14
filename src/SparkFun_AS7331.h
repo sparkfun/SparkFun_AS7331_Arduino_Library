@@ -2,9 +2,9 @@
     SparkFun Spectral UV Sensor - AS7331
 
     Qwiic 1x1
-    https://www.sparkfun.com/products/
+    https://www.sparkfun.com/products/23517
     Qwiic Mini
-    https://www.sparkfun.com/products/
+    https://www.sparkfun.com/products/23518
 
     Repository
     https://github.com/sparkfun/SparkFun_AS7331_Arduino_Library
@@ -16,7 +16,9 @@
     Name: SparkFun_AS7331.h
 
     Description:
-    TODO: Redo this description.
+    SfeAS7331Driver is a comms-agnostic driver for the AS7331 Spectral UV
+    sensor that uses the SparkFun Toolkit. The SfeAS7331ArdI2C class defines
+    the Arduino specific behavior for initializing and interadcting with devices.
 
 */
 
@@ -26,7 +28,6 @@
 
 #include <Arduino.h>
 #include <SparkFun_Toolkit.h>
-// #include "C:\\Users\\alex.brudner\\Documents\\Arduino\\libraries\\SparkFun_Toolkit\\src\\SparkFun_Toolkit.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // I2C Addressing
@@ -52,7 +53,7 @@ typedef enum
     DEVICE_MODE_CFG = 0x2,
     DEVICE_MODE_MEAS = 0x3
     // 0b1XX invalid
-} as7331_device_op_state_t;
+} as7331_dev_op_state_t;
 
 // Sensor gain, able to be read as (1 << (11 - gain)) aka 2^(11-gain).
 typedef enum
@@ -278,8 +279,8 @@ class SfeAS7331Driver
     // Default initialization values based on the datasheet. See SfeAS7331Driver::setDefaultSettings for
     // an explanation of the values.
     SfeAS7331Driver(uint8_t address = kDefaultAS7331Addr)
-        : _address{address}, _breakTime{25}, _numEdges{1}, _readyPinMode{false}, _dividerEnabled{false},
-          _tempConvEnabled{true}, _indexMode{true}, _standbyState{false}, _startState{false},
+        : _devAddress{address}, _theBus{nullptr}, _breakTime{25}, _numEdges{1}, _readyPinMode{false},
+          _dividerEnabled{false}, _tempConvEnabled{true}, _indexMode{true}, _standbyState{false}, _startState{false},
           _powerDownEnableState{true}, _opMode{DEVICE_MODE_CFG}, _sensorGain{GAIN_2}, _cclk{CCLK_1_024_MHZ},
           _mmode{MEAS_MODE_CMD}, _conversionTime{TIME_64MS}, _dividerRange{DIV_2}, _uva{0.0f}, _uvb{0.0f}, _uvc{0.0f},
           _temperature{0.0f}, _outputConversionTime{0U}, _conversionA{0.0f}, _conversionB{0.0f}, _conversionC{0.0f}
@@ -288,8 +289,8 @@ class SfeAS7331Driver
 
     /// @brief This method is called to initialize the AS7331 device through the
     /// specified bus.
-    /// @param theBus Pointer to the bus object.
     /// @param deviceAddress I2C address for the device.
+    /// @param theBus Pointer to the bus object.
     /// @return True if successful, false if it fails.
     bool begin(const uint8_t &deviceAddress = kDefaultAS7331Addr, sfeTkIBus *theBus = nullptr);
 
@@ -304,6 +305,10 @@ class SfeAS7331Driver
     /// @brief Sets the address that the bus uses to communicate with the sensor.
     /// @param deviceAddress Device address to use.
     void setDeviceAddress(const uint8_t &deviceAddress);
+
+    /// @brief Gets the currently configured device address.
+    /// @return device address.
+    uint8_t getDeviceAddress(void);
 
     /// @brief Helper class that sets up the sensor and state in the POR
     /// configuration.
@@ -358,6 +363,26 @@ class SfeAS7331Driver
     /// @return 0 if successful, negative if error, positive for warning.
     sfeTkError_t readOutConv(void);
 
+    /// @brief Returns the last valid UVA reading.
+    /// @return A float of the UVA reading.
+    float getUVA(void);
+
+    /// @brief Returns the last valid UVB reading.
+    /// @return A float of the UVB reading.
+    float getUVB(void);
+
+    /// @brief Returns the last valid UVC reading.
+    /// @return A float of the UVC reading.
+    float getUVC(void);
+
+    /// @brief Returns the last valid Temperature reading.
+    /// @return A float of the Temperature reading.
+    float getTemp(void);
+
+    /// @brief Returns the last valid output conversion.
+    /// @return The output conversion time in number of clock cycles.
+    uint32_t getOutConv(void);
+
     /// @brief Getter for the currently configured gain.
     /// @return Sensor's gain expressed as (1 << (11 - gain)).
     as7331_gain_t getGain(void);
@@ -411,7 +436,7 @@ class SfeAS7331Driver
     /// @param divider Divider value to set.
     /// @param setEnableDiv Option to turn on the divider if desired.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t setDigitalDividerRange(const as7331_divider_val_t &divider, const bool &setEnableDiv = false);
+    sfeTkError_t setDigitalDividerRange(const as7331_divider_val_t &divider, const bool &enableDiv = false);
 
     /// @brief Getter for the SYND temperature conversion status.
     /// @return True if temperature conversion is enabled in SYND mode.
@@ -466,12 +491,12 @@ class SfeAS7331Driver
 
     /// @brief Getter for the current operational state.
     /// @return Sensor's operational mode.
-    as7331_device_op_state_t getOperationMode(void);
+    as7331_dev_op_state_t getOperationMode(void);
 
     /// @brief Set the sensor's operating mode.
     /// @param opMode Operating mode to set.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t setOperationMode(const as7331_device_op_state_t &opMode);
+    sfeTkError_t setOperationMode(const as7331_dev_op_state_t &opMode);
 
     /// @brief Getter for the current measurement state.
     /// @return Sensor's measurement state.
@@ -624,44 +649,41 @@ class SfeAS7331Driver
     /// @brief Called to reset all local values back to initial conditions.
     void setDefaultSettings(void);
 
-    sfeTkIBus *_theBus; // Pointer to bus device.
-    uint8_t _address;   // Device's I2C address.
+    sfeTkIBus *_theBus;  // Pointer to bus device.
+    uint8_t _devAddress; // Device's I2C address.
 
-    uint8_t _breakTime; // Local configuration value. Value is in us/8. EX: _breakTime = 20 means 20*8 = 160us.
-    uint8_t _numEdges;  // Local configuration value. Edges seen on SYN pin before ending conversion in SYND mode.
+    uint8_t _breakTime; // Local config value. Value is in us/8. EX: _breakTime = 20 means 20*8 = 160us.
+    uint8_t _numEdges;  // Local config value. Edges seen on SYN pin before ending conversion in SYND mode.
 
-    bool _readyPinMode;         // Local configuration value. False is Push/Pull True is Open/Drain.
-    bool _dividerEnabled;       // Local configuration value. False is disabled, True is enabled.
-    bool _tempConvEnabled;      // Local configuration value. False is disabled, True is enabled.
-    bool _indexMode;            // Local configuration value. False is for controllers without repeat start.
+    bool _readyPinMode;         // Local config value. False is Push/Pull True is Open/Drain.
+    bool _dividerEnabled;       // Local config value. False is disabled, True is enabled.
+    bool _tempConvEnabled;      // Local config value. False is disabled, True is enabled.
+    bool _indexMode;            // Local config value. False is for controllers without repeat start.
     bool _standbyState;         // Local state value. False means the device is not in standby mode.
     bool _startState;           // Local state value. False means the device is not allowed to measure.
     bool _powerDownEnableState; // Local state value. False means the device is NOT POWERED DOWN. This is inverse.
 
-    as7331_device_op_state_t _opMode; // Local state value. Configuration or Measure operating mode.
-    as7331_gain_t _sensorGain;        // Local configuration value. Sensor gain stored as (1 << (11 - _sensorGain)).
-    as7331_conv_clk_freq_t _cclk;     // Local configuration value. Sensor's conversion clock frequency stored
-                                      // as 1024*(1 << _cclk) kHz.
+    as7331_dev_op_state_t _opMode; // Local state value. Configuration or Measure operating mode.
+    as7331_gain_t _sensorGain;     // Local config value. Sensor gain stored as (1 << (11 - gain)).
+    as7331_conv_clk_freq_t _cclk;  // Local config value. Sensor's conversion clock stored as 1024*(1 << cclk) kHz.
     as7331_meas_mode_t _mmode; // Local state value. Details the device's measurement mode as CONT, CMD, SYNS, or SYND.
-    as7331_conv_time_t _conversionTime; // Local configuration value. Contains the sensor's conversion time in CONT,
-                                        // CMD, and SYNS mode stored as (1 << _conversionTime) ms.
-    as7331_divider_val_t _dividerRange; // Local configuration value. Contains the sensor's internal predivider value as
-                                        // (1 << _dividerRange).
+    as7331_conv_time_t _conversionTime; // Local config value. Contains the conversion time stored as (1 << time) ms.
+    as7331_divider_val_t _dividerRange; // Local config value. Contains the predivider value stored as (1 << 1 + range).
 
     float _uva;         // Last valid UVA result in uW/cm2.
     float _uvb;         // Last valid UVB result in uW/cm2.
     float _uvc;         // Last valid UVC result in uW/cm2.
     float _temperature; // Last valid temperature result in degC.
 
-    uint32_t _outputConversionTime; // Last valid output conversion time result in number of clock cycles.
+    uint32_t _outputConversionTime; // Last valid output conversion time result in of clock cycle count.
 
     float _conversionA; // Internal conversion factor for the UVA sensor.
     float _conversionB; // Internal conversion factor for the UVB sensor.
     float _conversionC; // Internal conversion factor for the UVC sensor.
 
-    static constexpr float _fsrA = 348160.0; // Full Scale Resolution for the UVA sensor.
-    static constexpr float _fsrB = 387072.0; // Full Scale Resolution for the UVB sensor.
-    static constexpr float _fsrC = 169984.0; // Full Scale Resolution for the UVC sensor.
+    const float _fsrA = 348160.0; // Full Scale Resolution for the UVA sensor.
+    const float _fsrB = 387072.0; // Full Scale Resolution for the UVB sensor.
+    const float _fsrC = 169984.0; // Full Scale Resolution for the UVC sensor.
 };
 
 class SfeAS7331ArdI2C : public SfeAS7331Driver
@@ -671,26 +693,20 @@ class SfeAS7331ArdI2C : public SfeAS7331Driver
     {
     }
 
-    /// @brief  Sets up Arduino I2C driver using the default I2C address then calls the super class begin.
-    /// @return True if successful, false otherwise.
-    bool begin(void)
-    {
-        if (!_theI2CBus.init(kDefaultAS7331Addr))
-            return false;
-
-        setCommunicationBus(&_theI2CBus);
-
-        return SfeAS7331Driver::begin();
-    }
-
     /// @brief  Sets up Arduino I2C driver using the specified I2C address then calls the super class begin.
+    /// @param address Address of the I2C device.
     /// @return True if successful, false otherwise.
-    bool begin(const uint8_t &address)
+    bool begin(const uint8_t &address = kDefaultAS7331Addr)
     {
-        if (!_theI2CBus.init(address))
+        if (_theI2CBus.init(address) != kSTkErrOk)
             return false;
 
         setCommunicationBus(&_theI2CBus);
+
+        if (!reset())
+            return false;
+
+        isConnected();
 
         return SfeAS7331Driver::begin(address);
     }
@@ -699,13 +715,10 @@ class SfeAS7331ArdI2C : public SfeAS7331Driver
     /// @return True if successful, false otherwise.
     bool isConnected(void)
     {
-        if (!_theI2CBus.ping())
+        if (_theI2CBus.ping() != kSTkErrOk)
             return false;
 
-        // Perform soft reset just in case device got left in MEAS mode.
-        SfeAS7331Driver::reset();
-
-        return (kDefaultAS7331DeviceID == SfeAS7331Driver::getDeviceID());
+        return (kDefaultAS7331DeviceID == getDeviceID());
     }
 
   private:

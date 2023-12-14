@@ -2,15 +2,17 @@
 
 bool SfeAS7331Driver::begin(const uint8_t &deviceAddress, sfeTkIBus *theBus)
 {
-    // Set the internal bus pointer
-    setCommunicationBus(theBus);
+    // Nullptr check.
+    if (!_theBus && !theBus)
+        return false;
+
+    // Set the internal bus pointer, overriding current bus if it exists.
+    if (theBus != nullptr)
+        setCommunicationBus(theBus);
 
     // If the address passed in isn't the default, set the new address.
-    if(kDefaultAS7331Addr != deviceAddress)
+    if (kDefaultAS7331Addr != deviceAddress)
         setDeviceAddress(deviceAddress);
-
-    // Perform a soft reset so that we make sure the device is addressable.
-    reset();
 
     // Get the device setup and ready.
     return runDefaultSetup();
@@ -18,10 +20,14 @@ bool SfeAS7331Driver::begin(const uint8_t &deviceAddress, sfeTkIBus *theBus)
 
 uint8_t SfeAS7331Driver::getDeviceID(void)
 {
+    // Config registers are only available in Configuration mode.
+    if (!_theBus || _opMode != DEVICE_MODE_CFG)
+        return 0;
+    
     uint8_t devID;
 
     // Read the device ID register, if it errors then return 0.
-    if (kSTkErrOk != _theBus->readRegisterRegion(kSfeAS7331RegCfgAgen, &devID, 1U))
+    if (kSTkErrOk != _theBus->readRegisterByte(kSfeAS7331RegCfgAgen, devID))
         return 0;
 
     return devID;
@@ -34,12 +40,20 @@ void SfeAS7331Driver::setCommunicationBus(sfeTkIBus *theBus)
 
 void SfeAS7331Driver::setDeviceAddress(const uint8_t &deviceAddress)
 {
-    _address = deviceAddress;
+    _devAddress = deviceAddress;
 }
 
-// TODO: Take a look.
+uint8_t SfeAS7331Driver::getDeviceAddress(void)
+{
+    return _devAddress;
+}
+
 bool SfeAS7331Driver::runDefaultSetup(bool runSoftReset)
 {
+    // Config registers are only available in Configuration mode.
+    if (!_theBus || _opMode != DEVICE_MODE_CFG)
+        return false;
+
     // Do we need to run a software reset?
     if (runSoftReset)
         reset();
@@ -53,7 +67,10 @@ bool SfeAS7331Driver::runDefaultSetup(bool runSoftReset)
 
     // Read all the configuration registers in.
     uint8_t regs[6];
-    if (kSTkErrOk != _theBus->readRegisterRegion(kSfeAS7331RegCfgCreg1, regs, 6U))
+
+    uint32_t nRead = 0;
+    sfeTkError_t result = _theBus->readRegisterRegion(kSfeAS7331RegCfgCreg1, regs, 6U, nRead);
+    if (nRead != 6 || result != kSTkErrOk)
         return false;
 
     // Assign the read in bytes to each register's byte union.
@@ -65,7 +82,7 @@ bool SfeAS7331Driver::runDefaultSetup(bool runSoftReset)
     uint8_t edgesreg = regs[4];
     sfe_as7331_reg_cfg_optreg_t optreg = {.byte = regs[5]};
 
-    // Here we make sure the local settings match the sensor's settings
+    // Here we make sure the sensor's settings match the local settings
     // by changing the sensor's settings.
     osr.ss = _startState;
     osr.pd = _powerDownEnableState;
@@ -111,47 +128,67 @@ bool SfeAS7331Driver::runDefaultSetup(bool runSoftReset)
     return true;
 }
 
-// TODO: FIX
 bool SfeAS7331Driver::prepareMeasurement(const as7331_meas_mode_t measMode, bool startMeasure)
 {
-    if(_opMode != DEVICE_MODE_CFG)
-        return false;
-
+    // If the device is currently in power down mode.
     if (_powerDownEnableState)
-        if (kSTkErrOk != setPowerDownState(false))
-            return false;
-
-    if (_mmode != measMode)
     {
-        if (kSTkErrOk != setStandbyState(false))
+        if (kSTkErrOk != setPowerDownState(false)) // Set the device to be powered up.
             return false;
-        if (kSTkErrOk != setMeasurementMode(measMode))
+    }
+    
+    // If the device is currently in standby mode.
+    if (_standbyState)
+    {
+        if (kSTkErrOk != setStandbyState(false)) // Set the device to not be in standby.
             return false;
     }
 
-    if (_opMode != DEVICE_MODE_MEAS)
-        if (kSTkErrOk != setOperationMode(DEVICE_MODE_MEAS))
+    // If the device's currently configured measurement mode is different than the desired mode.
+    // This is just to reduce unnecessary calls.
+    if (_mmode != measMode)
+    {
+        if (kSTkErrOk != setMeasurementMode(measMode)) // Set the new mode.
             return false;
+    }
 
-    if (startMeasure)
-        if (kSTkErrOk != setStartState(true))
+    // If the device is in start state and we don't want it to be.
+    // This prevents starting automatically in the next step.
+    if (_startState && !startMeasure)
+    {
+        if (kSTkErrOk != setStartState(false)) // Stop it from running automatically.
             return false;
+    }
+
+    // Now that we've configured ourselves to measure properly, move the device op mode to measure.
+    if (kSTkErrOk != setOperationMode(DEVICE_MODE_MEAS))
+        return false;
+
+    // If the device is supposed to be started automatically and isn't configured that way.
+    if (!_startState && startMeasure)
+    {
+        if (kSTkErrOk != setStartState(true)) // Set the device to being measuring.
+            return false;
+    }
 
     return true;
 }
 
 bool SfeAS7331Driver::reset(void)
 {
+    // Standard read-modify-write sequence.
     sfe_as7331_reg_cfg_osr_t osr;
 
     if (kSTkErrOk != getOSR(osr))
         return false;
 
+    // Set software reset bit.
     osr.sw_res = 1;
 
     if (kSTkErrOk != setOSR(osr))
         return false;
 
+    // Set internal variables back to defaults.
     setDefaultSettings();
 
     return true;
@@ -159,72 +196,78 @@ bool SfeAS7331Driver::reset(void)
 
 sfeTkError_t SfeAS7331Driver::readTemp(void)
 {
-    if(_opMode != DEVICE_MODE_MEAS)
+    // Temperature is only available in Measurement mode.
+    if (!_theBus || _opMode != DEVICE_MODE_MEAS)
         return kSTkErrFail;
 
-    uint8_t tempRaw[2];
+    uint16_t tempRaw;
 
-    sfeTkError_t result = _theBus->readRegisterRegion(kSfeAS7331RegMeasTemp, tempRaw, 2U);
+    // Read in the raw value.
+    sfeTkError_t result = _theBus->readRegisterWord(kSfeAS7331RegMeasTemp, tempRaw);
 
     if (kSTkErrOk != result)
         return result;
 
-    _temperature = convertRawTempToTempC((uint16_t)tempRaw[1] << 8 | tempRaw[0]);
+    // Since temperature is more than 1 byte, need to order it correctly before conversion.
+    _temperature = convertRawTempToTempC(tempRaw);
 
     return kSTkErrOk;
 }
 
 sfeTkError_t SfeAS7331Driver::readUVA(void)
 {
-    if(_opMode != DEVICE_MODE_MEAS)
-        return kSTkErrFail;
-
     return readRawUV(AS7331_UVA);
 }
 
 sfeTkError_t SfeAS7331Driver::readUVB(void)
 {
-    if(_opMode != DEVICE_MODE_MEAS)
-        return kSTkErrFail;
-
     return readRawUV(AS7331_UVB);
 }
 
 sfeTkError_t SfeAS7331Driver::readUVC(void)
 {
-    if(_opMode != DEVICE_MODE_MEAS)
-        return kSTkErrFail;
-
     return readRawUV(AS7331_UVC);
 }
 
 sfeTkError_t SfeAS7331Driver::readAllUV(void)
 {
-    if(_opMode != DEVICE_MODE_MEAS)
+    // UV results are only available in Measurement mode.
+    if (!_theBus || _opMode != DEVICE_MODE_MEAS)
         return kSTkErrFail;
 
     uint8_t dataRaw[6];
 
-    sfeTkError_t result = _theBus->readRegisterRegion(kSfeAS7331RegMeasMres1, dataRaw, 6U);
+    // Read in the raw data from the results registers.
+    uint32_t nRead = 0;
 
-    if (kSTkErrOk != result)
+    sfeTkError_t result = _theBus->readRegisterRegion(kSfeAS7331RegMeasMres1, dataRaw, 6U, nRead);
+
+    if (nRead != 6 || result != kSTkErrOk)
         return result;
 
+    // If we're in SYND mode, need to calculate conversion based on the conversion time.
     if (_mmode == MEAS_MODE_SYND)
     {
         result = readOutConv();
-
         if (kSTkErrOk != result)
             return result;
 
+        // See datasheet section 7.4 Equation 4.
+        //          fsrX
+        //      --------------
+        //      gain * outConv
         float convFactor = 1.0f / (((float)_outputConversionTime) * ((float)(1 << (11 - _sensorGain))));
 
+        // Since result is more than 1 byte, need to order it correctly before conversion.
+        // FSR is dependent on the channel being measured, so do that here.
         _uva = convertRawUVVal(((uint16_t)dataRaw[1] << 8 | dataRaw[0]) * _fsrA, convFactor);
         _uvb = convertRawUVVal(((uint16_t)dataRaw[3] << 8 | dataRaw[2]) * _fsrB, convFactor);
         _uvc = convertRawUVVal(((uint16_t)dataRaw[5] << 8 | dataRaw[4]) * _fsrC, convFactor);
     }
     else
     {
+        // If we're in CONT, CMD, or SYNS mode, use the normally calculated conversion factor.
+        // Since result is more than 1 byte, need to order it correctly before conversion.
         _uva = convertRawUVVal((uint16_t)dataRaw[1] << 8 | dataRaw[0], _conversionA);
         _uvb = convertRawUVVal((uint16_t)dataRaw[3] << 8 | dataRaw[2], _conversionB);
         _uvc = convertRawUVVal((uint16_t)dataRaw[5] << 8 | dataRaw[4], _conversionC);
@@ -235,36 +278,47 @@ sfeTkError_t SfeAS7331Driver::readAllUV(void)
 
 sfeTkError_t SfeAS7331Driver::readAll(void)
 {
-    if(_opMode != DEVICE_MODE_MEAS)
+    // Results are only available in Measurement mode.
+    if (!_theBus || _opMode != DEVICE_MODE_MEAS)
         return kSTkErrFail;
-        
+
     uint8_t dataRaw[8];
 
-    sfeTkError_t result = _theBus->readRegisterRegion(kSfeAS7331RegMeasTemp, dataRaw, 8U);
+    uint32_t nRead = 0;
+    sfeTkError_t result = _theBus->readRegisterRegion(kSfeAS7331RegMeasTemp, dataRaw, 8U, nRead);
 
-    if (kSTkErrOk != result)
+    if (nRead != 8 || result != kSTkErrOk)
         return result;
 
     result = readOutConv();
-
     if (kSTkErrOk != result)
         return result;
 
+    // If we're in SYND mode, need to calculate conversion based on the conversion time.
     if (_mmode == MEAS_MODE_SYND)
     {
+        // See datasheet section 7.4 Equation 4.
+        //          fsrX
+        //      --------------
+        //      gain * outConv
         float convFactor = 1.0f / (((float)_outputConversionTime) * ((float)(1 << (11 - _sensorGain))));
 
+        // Since result is more than 1 byte, need to order it correctly before conversion.
+        // FSR is dependent on the channel being measured, so do that part here.
         _uva = convertRawUVVal(((uint16_t)dataRaw[3] << 8 | dataRaw[2]) * _fsrA, convFactor);
         _uvb = convertRawUVVal(((uint16_t)dataRaw[5] << 8 | dataRaw[4]) * _fsrB, convFactor);
         _uvc = convertRawUVVal(((uint16_t)dataRaw[7] << 8 | dataRaw[6]) * _fsrC, convFactor);
     }
     else
     {
+        // If we're in CONT, CMD, or SYNS mode, use the normally calculated conversion factor.
+        // Since result is more than 1 byte, need to order it correctly before conversion.
         _uva = convertRawUVVal((uint16_t)dataRaw[3] << 8 | dataRaw[2], _conversionA);
         _uvb = convertRawUVVal((uint16_t)dataRaw[5] << 8 | dataRaw[4], _conversionB);
         _uvc = convertRawUVVal((uint16_t)dataRaw[7] << 8 | dataRaw[6], _conversionC);
     }
 
+    // Since result is more than 1 byte, need to order it correctly before conversion.
     _temperature = convertRawTempToTempC((uint16_t)dataRaw[1] << 8 | dataRaw[0]);
 
     return kSTkErrOk;
@@ -272,22 +326,49 @@ sfeTkError_t SfeAS7331Driver::readAll(void)
 
 sfeTkError_t SfeAS7331Driver::readOutConv(void)
 {
-    if(_opMode != DEVICE_MODE_MEAS)
+    // Results are only available in Measurement mode.
+    if (!_theBus || _opMode != DEVICE_MODE_MEAS)
         return kSTkErrFail;
-        
+
     uint8_t tconvRaw[4];
 
-    sfeTkError_t result = _theBus->readRegisterRegion(kSfeAS7331RegMeasOutConvL, tconvRaw, 4U);
+    uint32_t nRead = 0;
 
-    if (kSTkErrOk != result)
+    sfeTkError_t result = _theBus->readRegisterRegion(kSfeAS7331RegMeasOutConvL, tconvRaw, 4U, nRead);
+
+    if (nRead != 4 || result != kSTkErrOk)
         return result;
 
-    _outputConversionTime = (uint32_t)(((uint32_t)tconvRaw[3] << 24) | 
-                                       ((uint32_t)tconvRaw[2] << 16) |
-                                       ((uint32_t)tconvRaw[1] << 8)  | 
-                                       tconvRaw[0]);
+    // Since result is more than 1 byte, need to order it correctly.
+    _outputConversionTime = (uint32_t)(((uint32_t)tconvRaw[3] << 24) | ((uint32_t)tconvRaw[2] << 16) |
+                                       ((uint32_t)tconvRaw[1] << 8) | tconvRaw[0]);
 
     return kSTkErrOk;
+}
+
+float SfeAS7331Driver::getUVA(void)
+{
+    return _uva;
+}
+
+float SfeAS7331Driver::getUVB(void)
+{
+    return _uvb;
+}
+
+float SfeAS7331Driver::getUVC(void)
+{
+    return _uvc;
+}
+
+float SfeAS7331Driver::getTemp(void)
+{
+    return _temperature;
+}
+
+uint32_t SfeAS7331Driver::getOutConv(void)
+{
+    return _outputConversionTime;
 }
 
 as7331_gain_t SfeAS7331Driver::getGain(void)
@@ -297,14 +378,10 @@ as7331_gain_t SfeAS7331Driver::getGain(void)
 
 sfeTkError_t SfeAS7331Driver::setGain(const as7331_gain_t &gain)
 {
-    if(_opMode != DEVICE_MODE_CFG)
-        return kSTkErrFail;
-
-    sfeTkError_t result = kSTkErrOk;
-
     sfe_as7331_reg_cfg_creg1_t creg1;
 
-    result = getCReg1(creg1);
+    // Standard read-modify-write sequence.
+    sfeTkError_t result = getCReg1(creg1);
     if (kSTkErrOk != result)
         return result;
 
@@ -314,8 +391,10 @@ sfeTkError_t SfeAS7331Driver::setGain(const as7331_gain_t &gain)
     if (kSTkErrOk != result)
         return result;
 
+    // If write is successful, save to internal state.
     _sensorGain = gain;
 
+    // Gain affects the conversion factors, so calculate new ones with the updated values.
     calculateConversionFactors();
 
     return kSTkErrOk;
@@ -328,14 +407,10 @@ as7331_conv_clk_freq_t SfeAS7331Driver::getCClk(void)
 
 sfeTkError_t SfeAS7331Driver::setCClk(const as7331_conv_clk_freq_t &cclk)
 {
-    if(_opMode != DEVICE_MODE_CFG)
-        return kSTkErrFail;
-        
-    sfeTkError_t result = kSTkErrOk;
-
     sfe_as7331_reg_cfg_creg3_t creg3;
 
-    result = getCReg3(creg3);
+    // Standard read-modify-write sequence.
+    sfeTkError_t result = getCReg3(creg3);
     if (kSTkErrOk != result)
         return result;
 
@@ -345,8 +420,10 @@ sfeTkError_t SfeAS7331Driver::setCClk(const as7331_conv_clk_freq_t &cclk)
     if (kSTkErrOk != result)
         return result;
 
+    // If write is successful, save to internal state.
     _cclk = cclk;
 
+    // CClk affects the conversion factors, so calculate new ones with the updated values.
     calculateConversionFactors();
 
     return kSTkErrOk;
@@ -359,14 +436,10 @@ as7331_conv_time_t SfeAS7331Driver::getConversionTime(void)
 
 sfeTkError_t SfeAS7331Driver::setConversionTime(const as7331_conv_time_t &convTime)
 {
-    if(_opMode != DEVICE_MODE_CFG)
-        return kSTkErrFail;
-        
-    sfeTkError_t result = kSTkErrOk;
-
     sfe_as7331_reg_cfg_creg1_t creg1;
 
-    result = getCReg1(creg1);
+    // Standard read-modify-write sequence.
+    sfeTkError_t result = getCReg1(creg1);
     if (kSTkErrOk != result)
         return result;
 
@@ -376,8 +449,10 @@ sfeTkError_t SfeAS7331Driver::setConversionTime(const as7331_conv_time_t &convTi
     if (kSTkErrOk != result)
         return result;
 
+    // If write is successful, save to internal state.
     _conversionTime = convTime;
 
+    // Conversion Time affects the conversion factors, so calculate new ones with the updated values.
     calculateConversionFactors();
 
     return kSTkErrOk;
@@ -390,14 +465,10 @@ bool SfeAS7331Driver::getReadyPinMode(void)
 
 sfeTkError_t SfeAS7331Driver::setReadyPinMode(const bool &pinMode)
 {
-    if(_opMode != DEVICE_MODE_CFG)
-        return kSTkErrFail;
-        
-    sfeTkError_t result = kSTkErrOk;
-
     sfe_as7331_reg_cfg_creg3_t creg3;
 
-    result = getCReg3(creg3);
+    // Standard read-modify-write sequence.
+    sfeTkError_t result = getCReg3(creg3);
     if (kSTkErrOk != result)
         return result;
 
@@ -407,6 +478,7 @@ sfeTkError_t SfeAS7331Driver::setReadyPinMode(const bool &pinMode)
     if (kSTkErrOk != result)
         return result;
 
+    // If write is successful, save to internal state.
     _readyPinMode = pinMode;
 
     return kSTkErrOk;
@@ -417,21 +489,15 @@ bool SfeAS7331Driver::getDigitalDividerEnabled(void)
     return _dividerEnabled;
 }
 
-// TODO: FIX
 sfeTkError_t SfeAS7331Driver::setDigitalDividerEnabled(const bool &isEnabled)
 {
-    if(_opMode != DEVICE_MODE_CFG)
-        return kSTkErrFail;
-        
-    // TODO: REDO THIS
     if (_dividerEnabled == isEnabled)
         return kSTkErrOk;
 
-    sfeTkError_t result = kSTkErrOk;
-
     sfe_as7331_reg_cfg_creg2_t creg2;
 
-    result = getCReg2(creg2);
+    // Standard read-modify-write sequence.
+    sfeTkError_t result = getCReg2(creg2);
     if (kSTkErrOk != result)
         return result;
 
@@ -441,10 +507,11 @@ sfeTkError_t SfeAS7331Driver::setDigitalDividerEnabled(const bool &isEnabled)
     if (kSTkErrOk != result)
         return result;
 
+    // If write is successful, save to internal state.
     _dividerEnabled = isEnabled;
 
-    if (isEnabled)
-        calculateConversionFactors();
+    // Digital divider affects the conversion factors, so calculate new ones with the updated values.
+    calculateConversionFactors();
 
     return kSTkErrOk;
 }
@@ -454,33 +521,28 @@ as7331_divider_val_t SfeAS7331Driver::getDigitalDividerRange(void)
     return _dividerRange;
 }
 
-// TODO: FIX
-sfeTkError_t SfeAS7331Driver::setDigitalDividerRange(const as7331_divider_val_t &divider, const bool &setEnableDiv)
+sfeTkError_t SfeAS7331Driver::setDigitalDividerRange(const as7331_divider_val_t &divider, const bool &enableDiv)
 {
-    if(_opMode != DEVICE_MODE_CFG)
-        return kSTkErrFail;
-        
-    // TODO: REDO THIS
-    sfeTkError_t result = kSTkErrOk;
-
     sfe_as7331_reg_cfg_creg2_t creg2;
 
-    result = getCReg2(creg2);
+    // Standard read-modify-write sequence.
+    sfeTkError_t result = getCReg2(creg2);
     if (kSTkErrOk != result)
         return result;
 
     creg2.div = divider;
+    creg2.en_div = enableDiv;
 
     result = setCReg2(creg2);
     if (kSTkErrOk != result)
         return result;
 
+    // If write is successful, save to internal state.
     _dividerRange = divider;
+    _dividerEnabled = enableDiv;
 
-    if (setEnableDiv)
-        result = setDigitalDividerEnabled(true);
-    else
-        calculateConversionFactors();
+    // Digital divider affects the conversion factors, so calculate new ones with the updated values.
+    calculateConversionFactors();
 
     return kSTkErrOk;
 }
@@ -492,14 +554,10 @@ bool SfeAS7331Driver::getSyndTempConversionEnabled(void)
 
 sfeTkError_t SfeAS7331Driver::setSyndTempConversionEnabled(const bool &isEnabled)
 {
-    if(_opMode != DEVICE_MODE_CFG)
-        return kSTkErrFail;
-        
-    sfeTkError_t result = kSTkErrOk;
-
     sfe_as7331_reg_cfg_creg2_t creg2;
 
-    result = getCReg2(creg2);
+    // Standard read-modify-write sequence.
+    sfeTkError_t result = getCReg2(creg2);
     if (kSTkErrOk != result)
         return result;
 
@@ -509,6 +567,7 @@ sfeTkError_t SfeAS7331Driver::setSyndTempConversionEnabled(const bool &isEnabled
     if (kSTkErrOk != result)
         return result;
 
+    // If write is successful, save to internal state.
     _tempConvEnabled = isEnabled;
 
     return kSTkErrOk;
@@ -521,14 +580,10 @@ bool SfeAS7331Driver::getIndexMode(void)
 
 sfeTkError_t SfeAS7331Driver::setIndexMode(const bool &indexMode)
 {
-    if(_opMode != DEVICE_MODE_CFG)
-        return kSTkErrFail;
-        
-    sfeTkError_t result = kSTkErrOk;
-
     sfe_as7331_reg_cfg_optreg_t optreg;
 
-    result = getOptIndex(optreg);
+    // Standard read-modify-write sequence.
+    sfeTkError_t result = getOptIndex(optreg);
     if (kSTkErrOk != result)
         return result;
 
@@ -538,6 +593,7 @@ sfeTkError_t SfeAS7331Driver::setIndexMode(const bool &indexMode)
     if (kSTkErrOk != result)
         return result;
 
+    // If write is successful, save to internal state.
     _indexMode = indexMode;
 
     return kSTkErrOk;
@@ -550,14 +606,10 @@ uint8_t SfeAS7331Driver::getBreakTime(void)
 
 sfeTkError_t SfeAS7331Driver::setBreakTime(const uint8_t &breakTime)
 {
-    if(_opMode != DEVICE_MODE_CFG)
-        return kSTkErrFail;
-        
-    sfeTkError_t result = kSTkErrOk;
-
     uint8_t breakreg;
 
-    result = getBreak(breakreg);
+    // Standard read-modify-write sequence.
+    sfeTkError_t result = getBreak(breakreg);
     if (kSTkErrOk != result)
         return result;
 
@@ -567,6 +619,7 @@ sfeTkError_t SfeAS7331Driver::setBreakTime(const uint8_t &breakTime)
     if (kSTkErrOk != result)
         return result;
 
+    // If write is successful, save to internal state.
     _breakTime = breakTime;
 
     return kSTkErrOk;
@@ -579,14 +632,10 @@ uint8_t SfeAS7331Driver::getNumEdges(void)
 
 sfeTkError_t SfeAS7331Driver::setNumEdges(const uint8_t &numEdges)
 {
-    if(_opMode != DEVICE_MODE_CFG)
-        return kSTkErrFail;
-        
-    sfeTkError_t result = kSTkErrOk;
-
     uint8_t edgesreg;
 
-    result = getEdges(edgesreg);
+    // Standard read-modify-write sequence.
+    sfeTkError_t result = getEdges(edgesreg);
     if (kSTkErrOk != result)
         return result;
 
@@ -596,6 +645,7 @@ sfeTkError_t SfeAS7331Driver::setNumEdges(const uint8_t &numEdges)
     if (kSTkErrOk != result)
         return result;
 
+    // If write is successful, save to internal state.
     _numEdges = numEdges;
 
     return kSTkErrOk;
@@ -608,11 +658,10 @@ bool SfeAS7331Driver::getPowerDownState(void)
 
 sfeTkError_t SfeAS7331Driver::setPowerDownState(const bool &pd)
 {
-    sfeTkError_t result = kSTkErrOk;
-
     sfe_as7331_reg_cfg_osr_t osr;
 
-    result = getOSR(osr);
+    // Standard read-modify-write sequence.
+    sfeTkError_t result = getOSR(osr);
     if (kSTkErrOk != result)
         return result;
 
@@ -622,23 +671,23 @@ sfeTkError_t SfeAS7331Driver::setPowerDownState(const bool &pd)
     if (kSTkErrOk != result)
         return result;
 
+    // If write is successful, save to internal state.
     _powerDownEnableState = pd;
 
     return kSTkErrOk;
 }
 
-as7331_device_op_state_t SfeAS7331Driver::getOperationMode(void)
+as7331_dev_op_state_t SfeAS7331Driver::getOperationMode(void)
 {
     return _opMode;
 }
 
-sfeTkError_t SfeAS7331Driver::setOperationMode(const as7331_device_op_state_t &opMode)
+sfeTkError_t SfeAS7331Driver::setOperationMode(const as7331_dev_op_state_t &opMode)
 {
-    sfeTkError_t result = kSTkErrOk;
-
     sfe_as7331_reg_cfg_osr_t osr;
 
-    result = getOSR(osr);
+    // Standard read-modify-write sequence.
+    sfeTkError_t result = getOSR(osr);
     if (kSTkErrOk != result)
         return result;
 
@@ -648,6 +697,7 @@ sfeTkError_t SfeAS7331Driver::setOperationMode(const as7331_device_op_state_t &o
     if (kSTkErrOk != result)
         return result;
 
+    // If write is successful, save to internal state.
     _opMode = opMode;
 
     return kSTkErrOk;
@@ -660,14 +710,10 @@ as7331_meas_mode_t SfeAS7331Driver::getMeasurementMode(void)
 
 sfeTkError_t SfeAS7331Driver::setMeasurementMode(const as7331_meas_mode_t &measMode)
 {
-    if(_opMode != DEVICE_MODE_CFG)
-        return kSTkErrFail;
-        
-    sfeTkError_t result = kSTkErrOk;
-
     sfe_as7331_reg_cfg_creg3_t creg3;
 
-    result = getCReg3(creg3);
+    // Standard read-modify-write sequence.
+    sfeTkError_t result = getCReg3(creg3);
     if (kSTkErrOk != result)
         return result;
 
@@ -677,6 +723,7 @@ sfeTkError_t SfeAS7331Driver::setMeasurementMode(const as7331_meas_mode_t &measM
     if (kSTkErrOk != result)
         return result;
 
+    // If write is successful, save to internal state.
     _mmode = measMode;
 
     return kSTkErrOk;
@@ -689,14 +736,10 @@ bool SfeAS7331Driver::getStandbyState(void)
 
 sfeTkError_t SfeAS7331Driver::setStandbyState(const bool &standby)
 {
-    if(_opMode != DEVICE_MODE_CFG)
-        return kSTkErrFail;
-        
-    sfeTkError_t result = kSTkErrOk;
-
     sfe_as7331_reg_cfg_creg3_t creg3;
 
-    result = getCReg3(creg3);
+    // Standard read-modify-write sequence.
+    sfeTkError_t result = getCReg3(creg3);
     if (kSTkErrOk != result)
         return result;
 
@@ -706,6 +749,7 @@ sfeTkError_t SfeAS7331Driver::setStandbyState(const bool &standby)
     if (kSTkErrOk != result)
         return result;
 
+    // If write is successful, save to internal state.
     _standbyState = standby;
 
     return kSTkErrOk;
@@ -718,11 +762,10 @@ bool SfeAS7331Driver::getStartState(void)
 
 sfeTkError_t SfeAS7331Driver::setStartState(const bool &startState)
 {
-    sfeTkError_t result = kSTkErrOk;
-
     sfe_as7331_reg_cfg_osr_t osr;
 
-    result = getOSR(osr);
+    // Standard read-modify-write sequence.
+    sfeTkError_t result = getOSR(osr);
     if (kSTkErrOk != result)
         return result;
 
@@ -732,6 +775,7 @@ sfeTkError_t SfeAS7331Driver::setStartState(const bool &startState)
     if (kSTkErrOk != result)
         return result;
 
+    // If write is successful, save to internal state.
     _startState = startState;
 
     return kSTkErrOk;
@@ -739,148 +783,165 @@ sfeTkError_t SfeAS7331Driver::setStartState(const bool &startState)
 
 sfeTkError_t SfeAS7331Driver::getStatus(sfe_as7331_reg_meas_osr_status_t &statusReg)
 {
-    if(_opMode != DEVICE_MODE_MEAS)
+    // Status register is only available in Measurement mode.
+    if (!_theBus || _opMode != DEVICE_MODE_MEAS)
         return kSTkErrFail;
-        
-    sfeTkError_t result = kSTkErrOk;
-    uint8_t statusRaw[2];
 
-    result = _theBus->readRegisterRegion(kSfeAS7331RegMeasOsrStatus, statusRaw, 2U);
+    uint16_t statusRaw;
+
+    sfeTkError_t result = _theBus->readRegisterWord(kSfeAS7331RegMeasOsrStatus, statusRaw);
 
     if (kSTkErrOk != result)
         return result;
 
-    // Shift MSB to top of 16-bit register, then OR with LSB.
-    statusReg.word = (uint16_t)statusRaw[1] << 8 | statusRaw[0];
+    statusReg.word = statusRaw;
 
     return kSTkErrOk;
 }
 
 sfeTkError_t SfeAS7331Driver::getOSR(sfe_as7331_reg_cfg_osr_t &osrReg)
 {
-    if(_opMode != DEVICE_MODE_CFG)
+    // OSR is available in both operation modes.
+    if (!_theBus)
         return kSTkErrFail;
-        
-    return _theBus->readRegisterRegion(kSfeAS7331RegCfgOsr, &osrReg.byte, 1U);
+
+    return _theBus->readRegisterByte(kSfeAS7331RegCfgOsr, osrReg.byte);
 }
 
 sfeTkError_t SfeAS7331Driver::setOSR(const sfe_as7331_reg_cfg_osr_t &osrReg)
 {
-    if(_opMode != DEVICE_MODE_CFG)
+    // OSR is available in both operation modes.
+    if (!_theBus)
         return kSTkErrFail;
-        
-    return _theBus->writeRegisterRegion(kSfeAS7331RegCfgOsr, &osrReg.byte, 1U);
+
+    return _theBus->writeRegisterByte(kSfeAS7331RegCfgOsr, osrReg.byte);
 }
 
 sfeTkError_t SfeAS7331Driver::getCReg1(sfe_as7331_reg_cfg_creg1_t &creg1)
 {
-    if(_opMode != DEVICE_MODE_CFG)
+    // Config registers are only available in Configuration mode.
+    if (!_theBus || _opMode != DEVICE_MODE_CFG)
         return kSTkErrFail;
-        
-    return _theBus->readRegisterRegion(kSfeAS7331RegCfgCreg1, &creg1.byte, 1U);
+
+    return _theBus->readRegisterByte(kSfeAS7331RegCfgCreg1, creg1.byte);
 }
 
 sfeTkError_t SfeAS7331Driver::setCReg1(const sfe_as7331_reg_cfg_creg1_t &creg1)
 {
-    if(_opMode != DEVICE_MODE_CFG)
+    // Config registers are only available in Configuration mode.
+    if (!_theBus || _opMode != DEVICE_MODE_CFG)
         return kSTkErrFail;
-        
-    return _theBus->writeRegisterRegion(kSfeAS7331RegCfgCreg1, &creg1.byte, 1U);
+
+    return _theBus->writeRegisterByte(kSfeAS7331RegCfgCreg1, creg1.byte);
 }
 
 sfeTkError_t SfeAS7331Driver::getCReg2(sfe_as7331_reg_cfg_creg2_t &creg2)
 {
-    if(_opMode != DEVICE_MODE_CFG)
+    // Config registers are only available in Configuration mode.
+    if (!_theBus || _opMode != DEVICE_MODE_CFG)
         return kSTkErrFail;
-        
-    return _theBus->readRegisterRegion(kSfeAS7331RegCfgCreg2, &creg2.byte, 1U);
+
+    return _theBus->readRegisterByte(kSfeAS7331RegCfgCreg2, creg2.byte);
 }
 
 sfeTkError_t SfeAS7331Driver::setCReg2(const sfe_as7331_reg_cfg_creg2_t &creg2)
 {
-    if(_opMode != DEVICE_MODE_CFG)
+    // Config registers are only available in Configuration mode.
+    if (!_theBus || _opMode != DEVICE_MODE_CFG)
         return kSTkErrFail;
-        
-    return _theBus->writeRegisterRegion(kSfeAS7331RegCfgCreg2, &creg2.byte, 1U);
+
+    return _theBus->writeRegisterByte(kSfeAS7331RegCfgCreg2, creg2.byte);
 }
 
 sfeTkError_t SfeAS7331Driver::getCReg3(sfe_as7331_reg_cfg_creg3_t &creg3)
 {
-    if(_opMode != DEVICE_MODE_CFG)
+    // Config registers are only available in Configuration mode.
+    if (!_theBus || _opMode != DEVICE_MODE_CFG)
         return kSTkErrFail;
-        
-    return _theBus->readRegisterRegion(kSfeAS7331RegCfgCreg3, &creg3.byte, 1U);
+
+    return _theBus->readRegisterByte(kSfeAS7331RegCfgCreg3, creg3.byte);
 }
 
 sfeTkError_t SfeAS7331Driver::setCReg3(const sfe_as7331_reg_cfg_creg3_t &creg3)
 {
-    if(_opMode != DEVICE_MODE_CFG)
+    // Config registers are only available in Configuration mode.
+    if (!_theBus || _opMode != DEVICE_MODE_CFG)
         return kSTkErrFail;
-        
-    return _theBus->writeRegisterRegion(kSfeAS7331RegCfgCreg3, &creg3.byte, 1U);
+
+    return _theBus->writeRegisterByte(kSfeAS7331RegCfgCreg3, creg3.byte);
 }
 
 sfeTkError_t SfeAS7331Driver::getBreak(uint8_t &breakReg)
 {
-    if(_opMode != DEVICE_MODE_CFG)
+    // Config registers are only available in Configuration mode.
+    if (!_theBus || _opMode != DEVICE_MODE_CFG)
         return kSTkErrFail;
-        
-    return _theBus->readRegisterRegion(kSfeAS7331RegCfgBreak, &breakReg, 1U);
+
+    return _theBus->readRegisterByte(kSfeAS7331RegCfgBreak, breakReg);
 }
 
 sfeTkError_t SfeAS7331Driver::setBreak(const uint8_t &breakReg)
 {
-    if(_opMode != DEVICE_MODE_CFG)
+    // Config registers are only available in Configuration mode.
+    if (!_theBus || _opMode != DEVICE_MODE_CFG)
         return kSTkErrFail;
-        
-    return _theBus->writeRegisterRegion(kSfeAS7331RegCfgBreak, &breakReg, 1U);
+
+    return _theBus->writeRegisterByte(kSfeAS7331RegCfgBreak, breakReg);
 }
 
 sfeTkError_t SfeAS7331Driver::getEdges(uint8_t &edgesReg)
 {
-    if(_opMode != DEVICE_MODE_CFG)
+    // Config registers are only available in Configuration mode.
+    if (!_theBus || _opMode != DEVICE_MODE_CFG)
         return kSTkErrFail;
 
-    return _theBus->readRegisterRegion(kSfeAS7331RegCfgEdges, &edgesReg, 1U);
+    return _theBus->readRegisterByte(kSfeAS7331RegCfgEdges, edgesReg);
 }
 
 sfeTkError_t SfeAS7331Driver::setEdges(const uint8_t &edgesReg)
 {
-    if(_opMode != DEVICE_MODE_CFG)
+    // Config registers are only available in Configuration mode.
+    if (!_theBus || _opMode != DEVICE_MODE_CFG)
         return kSTkErrFail;
 
-    return _theBus->writeRegisterRegion(kSfeAS7331RegCfgEdges, &edgesReg, 1U);
+    return _theBus->writeRegisterByte(kSfeAS7331RegCfgEdges, edgesReg);
 }
 
 sfeTkError_t SfeAS7331Driver::getOptIndex(sfe_as7331_reg_cfg_optreg_t &optReg)
 {
-    if(_opMode != DEVICE_MODE_CFG)
+    // Config registers are only available in Configuration mode.
+    if (!_theBus || _opMode != DEVICE_MODE_CFG)
         return kSTkErrFail;
 
-    return _theBus->readRegisterRegion(kSfeAS7331RegCfgOptReg, &optReg.byte, 1U);
+    return _theBus->readRegisterByte(kSfeAS7331RegCfgOptReg, optReg.byte);
 }
 
 sfeTkError_t SfeAS7331Driver::setOptIndex(const sfe_as7331_reg_cfg_optreg_t &optReg)
 {
-    if(!_theBus || _opMode != DEVICE_MODE_CFG)
+    // Config registers are only available in Configuration mode.
+    if (!_theBus || _opMode != DEVICE_MODE_CFG)
         return kSTkErrFail;
 
-    return _theBus->writeRegisterRegion(kSfeAS7331RegCfgOptReg, &optReg.byte, 1U);
+    return _theBus->writeRegisterByte(kSfeAS7331RegCfgOptReg, optReg.byte);
 }
 
 sfeTkError_t SfeAS7331Driver::readRawUV(const as7331_uv_type &uv_type)
 {
-    uint8_t uvRawVal[2];
-    uint8_t address = 0;
+    if (!_theBus || _opMode != DEVICE_MODE_MEAS)
+        return kSTkErrFail;
+
+    uint16_t uvRawVal;
+    uint8_t regAddress = 0;
     float *retUV = nullptr;
     float *conv = nullptr;
     const float *fsr = nullptr;
 
+    // Set variables based on the UV channel requested.
     switch (uv_type)
     {
-    case AS7331_UVA:
     default: // Since it's an enum, you can't miscall this function, so default to A.
-        address = kSfeAS7331RegMeasMres1;
+    case AS7331_UVA:
+        regAddress = kSfeAS7331RegMeasMres1;
         fsr = &_fsrA;
         retUV = &_uva;
         if (_mmode != MEAS_MODE_SYND)
@@ -889,7 +950,7 @@ sfeTkError_t SfeAS7331Driver::readRawUV(const as7331_uv_type &uv_type)
         }
         break;
     case AS7331_UVB:
-        address = kSfeAS7331RegMeasMres2;
+        regAddress = kSfeAS7331RegMeasMres2;
         fsr = &_fsrB;
         retUV = &_uvb;
         if (_mmode != MEAS_MODE_SYND)
@@ -898,7 +959,7 @@ sfeTkError_t SfeAS7331Driver::readRawUV(const as7331_uv_type &uv_type)
         }
         break;
     case AS7331_UVC:
-        address = kSfeAS7331RegMeasMres3;
+        regAddress = kSfeAS7331RegMeasMres3;
         fsr = &_fsrC;
         retUV = &_uvc;
         if (_mmode != MEAS_MODE_SYND)
@@ -908,11 +969,12 @@ sfeTkError_t SfeAS7331Driver::readRawUV(const as7331_uv_type &uv_type)
         break;
     }
 
-    sfeTkError_t result = _theBus->readRegisterRegion(address, uvRawVal, 2U);
+    sfeTkError_t result = _theBus->readRegisterWord(regAddress, uvRawVal);
 
     if (kSTkErrOk != result)
         return result;
 
+    // If we're in SYND mode, need to calculate conversion based on the conversion time.
     if (_mmode == MEAS_MODE_SYND)
     {
         result = readOutConv();
@@ -926,11 +988,13 @@ sfeTkError_t SfeAS7331Driver::readRawUV(const as7331_uv_type &uv_type)
         //      gain * outConv
         float convFactor = (*fsr) / (((float)_outputConversionTime) * ((float)(1 << (11 - _sensorGain))));
 
-        *retUV = convertRawUVVal((uint16_t)uvRawVal[1] << 8 | uvRawVal[0], convFactor);
+        // Since result is more than 1 byte, need to order it correctly before conversion.
+        *retUV = convertRawUVVal(uvRawVal, convFactor);
     }
     else
     {
-        *retUV = convertRawUVVal((uint16_t)uvRawVal[1] << 8 | uvRawVal[0], *conv);
+        // Since result is more than 1 byte, need to order it correctly before conversion.
+        *retUV = convertRawUVVal(uvRawVal, *conv);
     }
 
     return kSTkErrOk;
@@ -969,19 +1033,19 @@ void SfeAS7331Driver::calculateConversionFactors(void)
 
 void SfeAS7331Driver::setDefaultSettings()
 {
-    _breakTime = 25; // 25 * 8us = 200us.
-    _numEdges = 1; // 1 edge.
-    _readyPinMode = false; // Push-pull.
-    _dividerEnabled = false; // Predivider disabled.
-    _tempConvEnabled = true; // Temp conversion in synd mode enabled.
-    _indexMode = true; // Repeat start enabled.
-    _standbyState = false; // Not in standby mode.
-    _startState = false; // Not started.
+    _breakTime = 25;              // 25 * 8us = 200us.
+    _numEdges = 1;                // 1 edge.
+    _readyPinMode = false;        // Push-pull.
+    _dividerEnabled = false;      // Predivider disabled.
+    _tempConvEnabled = true;      // Temp conversion in synd mode enabled.
+    _indexMode = true;            // Repeat start enabled.
+    _standbyState = false;        // Not in standby mode.
+    _startState = false;          // Not started.
     _powerDownEnableState = true; // Device is powered down.
-    _opMode = DEVICE_MODE_CFG; // Device is in configuration mode.
-    _sensorGain = GAIN_2; // Gain of 2x.
-    _cclk = CCLK_1_024_MHZ; // 1.024 MHz conversion clock
-    _mmode = MEAS_MODE_CMD; // Command/One Shot Mode.
-    _conversionTime = TIME_64MS; // 64 ms conversion time.
-    _dividerRange = DIV_2; // Predivider 2x.
+    _opMode = DEVICE_MODE_CFG;    // Device is in configuration mode.
+    _sensorGain = GAIN_2;         // Gain of 2x.
+    _cclk = CCLK_1_024_MHZ;       // 1.024 MHz conversion clock
+    _mmode = MEAS_MODE_CMD;       // Command/One Shot Mode.
+    _conversionTime = TIME_64MS;  // 64 ms conversion time.
+    _dividerRange = DIV_2;        // Predivider 2x.
 }
