@@ -51,7 +51,9 @@ uint8_t SfeAS7331Driver::getDeviceID(void)
     // If we changed it at first, change it back.
     if(needsToBeChangedBack)
     {
-        if(kSTkErrOk != setOperationMode(DEVICE_MODE_MEAS))
+        osr.dos = DEVICE_MODE_MEAS;
+
+        if(kSTkErrOk != setOSR(osr))
             return 0;
     }
 
@@ -74,8 +76,7 @@ void SfeAS7331Driver::setDeviceAddress(const uint8_t &deviceAddress)
         case kQuaternaryAS7331Addr:
             _devAddress = deviceAddress;
             break;
-        default: // Otherwise set it to the default. No disallowed addresses.
-            _devAddress = kDefaultAS7331Addr;
+        default: // Default to doing nothing.
             break;
     }
 }
