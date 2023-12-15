@@ -30,11 +30,14 @@ getUVB                          KEYWORD2
 getUVC                          KEYWORD2
 getTemp                         KEYWORD2
 getOutConv                      KEYWORD2
-getGain                         KEYWORD2
+getGainRaw                      KEYWORD2
+getGainValue                    KEYWORD2
 setGain                         KEYWORD2
-getCClk                         KEYWORD2
+getCClkRaw                      KEYWORD2
+getCClkKHz                      KEYWORD2
 setCClk                         KEYWORD2
-getConversionTime               KEYWORD2
+getConversionTimeRaw            KEYWORD2
+getConversionTimeMillis         KEYWORD2
 setConversionTime               KEYWORD2
 getReadyPinMode                 KEYWORD2
 setReadyPinMode                 KEYWORD2
