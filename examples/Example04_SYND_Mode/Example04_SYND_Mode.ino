@@ -46,7 +46,7 @@ void setup() {
   // Initialize sensor and run default setup.
   if(myUVSensor.begin() == false) {
     Serial.println("Sensor failed to begin. Please check your wiring!");
-    Serial.println("Spinning...");
+    Serial.println("Halting...");
     while(1);
   }
 
@@ -55,7 +55,7 @@ void setup() {
   // Set measurement mode and change device operating mode to measure.
   if(myUVSensor.prepareMeasurement(MEAS_MODE_SYND) == false) {
     Serial.println("Sensor did not get set properly.");
-    Serial.println("Spinning...");
+    Serial.println("Halting...");
     while(1);
   }
 

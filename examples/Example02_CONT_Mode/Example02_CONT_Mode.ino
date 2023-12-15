@@ -46,16 +46,18 @@ void setup() {
   // Initialize sensor and run default setup.
   if(myUVSensor.begin() == false) {
     Serial.println("Sensor failed to begin. Please check your wiring!");
-    Serial.println("Spinning...");
+    Serial.println("Halting...");
     while(1);
   }
 
   Serial.println("Sensor began.");
 
+  // Set the delay between measurements so that the processor can read out the 
+  // results without interfering with the ADC.
   // Set break time to 900us (112 * 8us) to account for the time it takes to poll data.
   if(kSTkErrOk != myUVSensor.setBreakTime(112)) {
     Serial.println("Sensor did not set break time properly.");
-    Serial.println("Spinning...");
+    Serial.println("Halting...");
     while(1);
   }
 
