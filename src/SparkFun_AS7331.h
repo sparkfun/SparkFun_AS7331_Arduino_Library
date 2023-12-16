@@ -47,7 +47,8 @@ class SfeAS7331ArdI2C : public SfeAS7331Driver
 
         setCommunicationBus(&_theI2CBus);
 
-        isConnected();
+        if(!isConnected())
+            return false;
 
         return SfeAS7331Driver::begin(address);
     }
