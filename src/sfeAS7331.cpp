@@ -1,6 +1,6 @@
 #include "sfeAS7331.h"
 
-bool SfeAS7331Driver::begin(const uint8_t &deviceAddress, sfeTkIBus *theBus)
+bool SfeAS7331Driver::begin(sfeTkIBus *theBus)
 {
     // Nullptr check.
     if (!_theBus && !theBus)
@@ -9,10 +9,6 @@ bool SfeAS7331Driver::begin(const uint8_t &deviceAddress, sfeTkIBus *theBus)
     // Set the internal bus pointer, overriding current bus if it exists.
     if (theBus != nullptr)
         setCommunicationBus(theBus);
-
-    // If the address passed in isn't the default, set the new address.
-    if (kDefaultAS7331Addr != deviceAddress)
-        setDeviceAddress(deviceAddress);
 
     // Get the device setup and ready.
     return runDefaultSetup();
@@ -63,27 +59,6 @@ uint8_t SfeAS7331Driver::getDeviceID(void)
 void SfeAS7331Driver::setCommunicationBus(sfeTkIBus *theBus)
 {
     _theBus = theBus;
-}
-
-void SfeAS7331Driver::setDeviceAddress(const uint8_t &deviceAddress)
-{
-    switch(deviceAddress)
-    {
-        // If it's any of the allowed addresses, set it.
-        case kDefaultAS7331Addr:
-        case kSecondaryAS7331Addr:
-        case kTertiaryAS7331Addr:
-        case kQuaternaryAS7331Addr:
-            _devAddress = deviceAddress;
-            break;
-        default: // Default to doing nothing.
-            break;
-    }
-}
-
-uint8_t SfeAS7331Driver::getDeviceAddress(void)
-{
-    return _devAddress;
 }
 
 bool SfeAS7331Driver::runDefaultSetup(const bool &runSoftReset)

@@ -47,10 +47,17 @@ class SfeAS7331ArdI2C : public SfeAS7331Driver
 
         setCommunicationBus(&_theI2CBus);
 
+        // If the address passed in isn't the default, set the new address.
+        if (kDefaultAS7331Addr != address)
+        {
+            if(!setDeviceAddress(address))
+                return false;
+        }
+
         if(!isConnected())
             return false;
 
-        return SfeAS7331Driver::begin(address);
+        return SfeAS7331Driver::begin();
     }
 
     /// @brief Checks to see if the AS7331 is connected.
@@ -61,6 +68,34 @@ class SfeAS7331ArdI2C : public SfeAS7331Driver
             return false;
 
         return (kDefaultAS7331DeviceID == getDeviceID());
+    }
+
+    /// @brief Sets the address that the bus uses to communicate with the sensor.
+    /// @param deviceAddress Device address to use.
+    /// @return True if a valid address is set.
+    bool setDeviceAddress(const uint8_t &deviceAddress)
+    {
+        switch(deviceAddress)
+        {
+            // If it's any of the allowed addresses, set it.
+            case kDefaultAS7331Addr:
+            case kSecondaryAS7331Addr:
+            case kTertiaryAS7331Addr:
+            case kQuaternaryAS7331Addr:
+                _theI2CBus.setAddress(deviceAddress);
+                break;
+            default: // If it's invalid, return false.
+                return false;
+                break;
+        }
+        return true;
+    }
+
+    /// @brief Gets the currently configured device address.
+    /// @return device address.
+    uint8_t getDeviceAddress(void)
+    {
+        return _theI2CBus.address();
     }
 
   private:
