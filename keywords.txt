@@ -1,6 +1,6 @@
 # Syntax Coloring Map for SparkFun AS7331 Arduino Library
 
-# Datatypes (KEYWORD1)  
+# Datatypes (KEYWORD1)
 as7331_dev_op_state_t   KEYWORD1
 as7331_gain_t           KEYWORD1
 as7331_conv_clk_freq_t  KEYWORD1
