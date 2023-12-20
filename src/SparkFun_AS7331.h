@@ -47,13 +47,6 @@ class SfeAS7331ArdI2C : public SfeAS7331Driver
 
         setCommunicationBus(&_theI2CBus);
 
-        // If the address passed in isn't the default, set the new address.
-        if (kDefaultAS7331Addr != address)
-        {
-            if(!setDeviceAddress(address))
-                return false;
-        }
-
         if(!isConnected())
             return false;
 
