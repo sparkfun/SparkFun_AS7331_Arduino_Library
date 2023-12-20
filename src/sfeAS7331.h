@@ -276,8 +276,8 @@ class SfeAS7331Driver
   public:
     // Default initialization values based on the datasheet. See SfeAS7331Driver::setDefaultSettings for
     // an explanation of the values.
-    SfeAS7331Driver(uint8_t address = kDefaultAS7331Addr)
-        : _devAddress{address}, _theBus{nullptr}, _breakTime{25}, _numEdges{1}, _readyPinMode{false},
+    SfeAS7331Driver()
+        : _theBus{nullptr}, _breakTime{25}, _numEdges{1}, _readyPinMode{false},
           _dividerEnabled{false}, _tempConvEnabled{true}, _indexMode{true}, _standbyState{false}, _startState{false},
           _powerDownEnableState{true}, _opMode{DEVICE_MODE_CFG}, _sensorGain{GAIN_2}, _cclk{CCLK_1_024_MHZ},
           _mmode{MEAS_MODE_CMD}, _conversionTime{TIME_64MS}, _dividerRange{DIV_2}, _uva{0.0f}, _uvb{0.0f}, _uvc{0.0f},
@@ -287,10 +287,9 @@ class SfeAS7331Driver
 
     /// @brief This method is called to initialize the AS7331 device through the
     /// specified bus.
-    /// @param deviceAddress I2C address for the device.
     /// @param theBus Pointer to the bus object.
     /// @return True if successful, false if it fails.
-    bool begin(const uint8_t &deviceAddress = kDefaultAS7331Addr, sfeTkIBus *theBus = nullptr);
+    bool begin(sfeTkIBus *theBus = nullptr);
 
     /// @brief Requests the device ID from the sensor.
     /// @return The device ID of the sensor.
@@ -299,14 +298,6 @@ class SfeAS7331Driver
     /// @brief Sets the communication bus to the specified bus.
     /// @param theBus Bus to set as the communication devie.
     void setCommunicationBus(sfeTkIBus *theBus);
-
-    /// @brief Sets the address that the bus uses to communicate with the sensor.
-    /// @param deviceAddress Device address to use.
-    void setDeviceAddress(const uint8_t &deviceAddress);
-
-    /// @brief Gets the currently configured device address.
-    /// @return device address.
-    uint8_t getDeviceAddress(void);
 
     /// @brief Helper class that sets up the sensor and state in the POR
     /// configuration.
@@ -660,7 +651,6 @@ class SfeAS7331Driver
     void setDefaultSettings(void);
 
     sfeTkIBus *_theBus;  // Pointer to bus device.
-    uint8_t _devAddress; // Device's I2C address.
 
     uint8_t _breakTime; // Local config value. Value is in us/8. EX: _breakTime = 20 means 20*8 = 160us.
     uint8_t _numEdges;  // Local config value. Edges seen on SYN pin before ending conversion in SYND mode.
