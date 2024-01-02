@@ -91,7 +91,7 @@ bool SfeAS7331Driver::runDefaultSetup(const bool &runSoftReset)
         // Read all the configuration registers in.
         uint8_t regs[6];
 
-        uint32_t nRead = 0;
+        size_t nRead = 0;
         sfeTkError_t result = _theBus->readRegisterRegion(kSfeAS7331RegCfgCreg1, regs, 6U, nRead);
         if (nRead != 6 || result != kSTkErrOk)
             return false;
@@ -264,7 +264,7 @@ sfeTkError_t SfeAS7331Driver::readAllUV(void)
     uint8_t dataRaw[6];
 
     // Read in the raw data from the results registers.
-    uint32_t nRead = 0;
+    size_t nRead = 0;
 
     sfeTkError_t result = _theBus->readRegisterRegion(kSfeAS7331RegMeasMres1, dataRaw, 6U, nRead);
 
@@ -310,7 +310,7 @@ sfeTkError_t SfeAS7331Driver::readAll(void)
 
     uint8_t dataRaw[8];
 
-    uint32_t nRead = 0;
+    size_t nRead = 0;
     sfeTkError_t result = _theBus->readRegisterRegion(kSfeAS7331RegMeasTemp, dataRaw, 8U, nRead);
 
     if (nRead != 8 || result != kSTkErrOk)
@@ -358,7 +358,7 @@ sfeTkError_t SfeAS7331Driver::readOutConv(void)
 
     uint8_t tconvRaw[4];
 
-    uint32_t nRead = 0;
+    size_t nRead;
 
     sfeTkError_t result = _theBus->readRegisterRegion(kSfeAS7331RegMeasOutConvL, tconvRaw, 4U, nRead);
 
