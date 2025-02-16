@@ -101,7 +101,7 @@ jobs:
           libraries: |
             - source-path: ./
           sketch-paths: |
-            - test/test
+            - examples/Example01_Basic_OneShot
           enable-warnings-report: true
           enable-deltas-report: true
           verbose: true
