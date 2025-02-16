@@ -93,19 +93,24 @@ jobs:
       - name: Branch name
         run: echo running on branch ${GITHUB_REF##*/}
 
-      - name: Compile Sketch
-        uses: arduino/compile-sketches@v1.1.0
-        with:
-          platforms: ${{ matrix.board.platforms }}
-          fqbn: ${{ matrix.board.fqbn }}
-          libraries: |
-            - source-path: ./
-          sketch-paths: |
-            - examples/Example01_Basic_OneShot
-          enable-warnings-report: true
-          enable-deltas-report: true
-          verbose: true
+      - name: Arduino - Start config file
+        run: arduino-cli config init --additional-urls ${{ matrix.board.source-url}}
 
+      - name: Arduino - Update index
+        run: arduino-cli core update-index
+
+      - name: Arduino - Install platform
+        run: arduino-cli core install ${{ matrix.board.name}}
+
+      - name: Arduino - Install libraries
+        run: |
+            arduino-cli config set library.enable_unsafe_install true
+            arduino-cli version
+            arduino-cli lib install 'SparkFun_Toolkit'
+
+      - name: Compile Sketch
+        run: arduino-cli compile --fqbn ${{ matrix.board.fqbn }} examples/Example01_Basic_OneShot --library .
+        
     # outputs:
     #   report-artifact-name: ${{ steps.report-artifact-name.outputs.report-artifact-name }}
 
