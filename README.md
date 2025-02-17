@@ -125,7 +125,7 @@ The following examples are provided with the library
 
 ## Documentation
 
-The full API and use documentation for this library is provided [here](http://docs.sparkfun.com/SparkFun_AS7331_Arduino_Library/). For a quick reference, the main methods available in the library are listed [here](http://docs.sparkfun.com/SparkFun_AS7331_Arduino_Library/functions.html).
+The full API and use documentation for this library is provided [here](http://docs.sparkfun.com/SparkFun_AS7331_Arduino_Library/). For a quick reference, the main methods available in the library are listed [here](https://docs.sparkfun.com/SparkFun_AS7331_Arduino_Library/class_sfe_a_s7331_ard_i2_c.html).
 
 Curious about the hardware this board works with - visit the SparkFun Spectral UV Sensor [hardware repository](https://github.com/sparkfun/SparkFun_Spectral_UV_Sensor_AS7331).
 
