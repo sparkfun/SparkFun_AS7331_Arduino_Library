@@ -73,7 +73,7 @@ uint8_t sfDevAS7331::getDeviceID(void)
     uint8_t devID;
 
     // Read the device ID register, if it errors then return 0.
-    if (ksfTkErrOk != _theBus->readRegisterByte(kSfeAS7331RegCfgAgen, devID))
+    if (ksfTkErrOk != _theBus->readRegister(kSfeAS7331RegCfgAgen, devID))
         return 0;
 
     // If we changed it at first, change it back.
@@ -124,7 +124,7 @@ bool sfDevAS7331::runDefaultSetup(const bool &runSoftReset)
         uint8_t regs[6];
 
         size_t nRead = 0;
-        sfTkError_t result = _theBus->readRegisterRegion(kSfeAS7331RegCfgCreg1, regs, 6U, nRead);
+        sfTkError_t result = _theBus->readRegister(kSfeAS7331RegCfgCreg1, regs, sizeof(regs), nRead);
         if (nRead != 6 || result != ksfTkErrOk)
             return false;
 
@@ -174,7 +174,7 @@ bool sfDevAS7331::runDefaultSetup(const bool &runSoftReset)
         regs[5] = optreg.byte;
 
         // Write the bytes to the sensor, ensuring the device matches local settings.
-        if (ksfTkErrOk != _theBus->writeRegisterRegion(kSfeAS7331RegCfgCreg1, regs, 6U))
+        if (ksfTkErrOk != _theBus->writeRegister(kSfeAS7331RegCfgCreg1, regs, 6U))
             return false;
     }
 
@@ -261,7 +261,7 @@ sfTkError_t sfDevAS7331::readTemp(void)
     uint16_t tempRaw;
 
     // Read in the raw value.
-    sfTkError_t result = _theBus->readRegisterWord(kSfeAS7331RegMeasTemp, tempRaw);
+    sfTkError_t result = _theBus->readRegister(kSfeAS7331RegMeasTemp, tempRaw);
 
     if (ksfTkErrOk != result)
         return result;
@@ -298,7 +298,7 @@ sfTkError_t sfDevAS7331::readAllUV(void)
     // Read in the raw data from the results registers.
     size_t nRead = 0;
 
-    sfTkError_t result = _theBus->readRegisterRegion(kSfeAS7331RegMeasMres1, dataRaw, 6U, nRead);
+    sfTkError_t result = _theBus->readRegister(kSfeAS7331RegMeasMres1, dataRaw, sizeof(dataRaw), nRead);
 
     if (nRead != 6 || result != ksfTkErrOk)
         return result;
@@ -343,7 +343,7 @@ sfTkError_t sfDevAS7331::readAll(void)
     uint8_t dataRaw[8];
 
     size_t nRead = 0;
-    sfTkError_t result = _theBus->readRegisterRegion(kSfeAS7331RegMeasTemp, dataRaw, 8U, nRead);
+    sfTkError_t result = _theBus->readRegister(kSfeAS7331RegMeasTemp, dataRaw, sizeof(dataRaw), nRead);
 
     if (nRead != 8 || result != ksfTkErrOk)
         return result;
@@ -392,7 +392,7 @@ sfTkError_t sfDevAS7331::readOutConv(void)
 
     size_t nRead;
 
-    sfTkError_t result = _theBus->readRegisterRegion(kSfeAS7331RegMeasOutConvL, tconvRaw, 4U, nRead);
+    sfTkError_t result = _theBus->readRegister(kSfeAS7331RegMeasOutConvL, tconvRaw, 4U, nRead);
 
     if (nRead != 4 || result != ksfTkErrOk)
         return result;
@@ -862,7 +862,7 @@ sfTkError_t sfDevAS7331::getStatus(sfe_as7331_reg_meas_osr_status_t &statusReg)
 
     uint16_t statusRaw;
 
-    sfTkError_t result = _theBus->readRegisterWord(kSfeAS7331RegMeasOsrStatus, statusRaw);
+    sfTkError_t result = _theBus->readRegister(kSfeAS7331RegMeasOsrStatus, statusRaw);
 
     if (ksfTkErrOk != result)
         return result;
@@ -878,7 +878,7 @@ sfTkError_t sfDevAS7331::getOSR(sfe_as7331_reg_cfg_osr_t &osrReg)
     if (!_theBus)
         return ksfTkErrFail;
 
-    return _theBus->readRegisterByte(kSfeAS7331RegCfgOsr, osrReg.byte);
+    return _theBus->readRegister(kSfeAS7331RegCfgOsr, osrReg.byte);
 }
 
 sfTkError_t sfDevAS7331::setOSR(const sfe_as7331_reg_cfg_osr_t &osrReg)
@@ -887,7 +887,7 @@ sfTkError_t sfDevAS7331::setOSR(const sfe_as7331_reg_cfg_osr_t &osrReg)
     if (!_theBus)
         return ksfTkErrFail;
 
-    return _theBus->writeRegisterByte(kSfeAS7331RegCfgOsr, osrReg.byte);
+    return _theBus->writeRegister(kSfeAS7331RegCfgOsr, osrReg.byte);
 }
 
 sfTkError_t sfDevAS7331::getCReg1(sfe_as7331_reg_cfg_creg1_t &creg1)
@@ -896,7 +896,7 @@ sfTkError_t sfDevAS7331::getCReg1(sfe_as7331_reg_cfg_creg1_t &creg1)
     if (!_theBus || _opMode != DEVICE_MODE_CFG)
         return ksfTkErrFail;
 
-    return _theBus->readRegisterByte(kSfeAS7331RegCfgCreg1, creg1.byte);
+    return _theBus->readRegister(kSfeAS7331RegCfgCreg1, creg1.byte);
 }
 
 sfTkError_t sfDevAS7331::setCReg1(const sfe_as7331_reg_cfg_creg1_t &creg1)
@@ -905,7 +905,7 @@ sfTkError_t sfDevAS7331::setCReg1(const sfe_as7331_reg_cfg_creg1_t &creg1)
     if (!_theBus || _opMode != DEVICE_MODE_CFG)
         return ksfTkErrFail;
 
-    return _theBus->writeRegisterByte(kSfeAS7331RegCfgCreg1, creg1.byte);
+    return _theBus->writeRegister(kSfeAS7331RegCfgCreg1, creg1.byte);
 }
 
 sfTkError_t sfDevAS7331::getCReg2(sfe_as7331_reg_cfg_creg2_t &creg2)
@@ -914,7 +914,7 @@ sfTkError_t sfDevAS7331::getCReg2(sfe_as7331_reg_cfg_creg2_t &creg2)
     if (!_theBus || _opMode != DEVICE_MODE_CFG)
         return ksfTkErrFail;
 
-    return _theBus->readRegisterByte(kSfeAS7331RegCfgCreg2, creg2.byte);
+    return _theBus->readRegister(kSfeAS7331RegCfgCreg2, creg2.byte);
 }
 
 sfTkError_t sfDevAS7331::setCReg2(const sfe_as7331_reg_cfg_creg2_t &creg2)
@@ -923,7 +923,7 @@ sfTkError_t sfDevAS7331::setCReg2(const sfe_as7331_reg_cfg_creg2_t &creg2)
     if (!_theBus || _opMode != DEVICE_MODE_CFG)
         return ksfTkErrFail;
 
-    return _theBus->writeRegisterByte(kSfeAS7331RegCfgCreg2, creg2.byte);
+    return _theBus->writeRegister(kSfeAS7331RegCfgCreg2, creg2.byte);
 }
 
 sfTkError_t sfDevAS7331::getCReg3(sfe_as7331_reg_cfg_creg3_t &creg3)
@@ -932,7 +932,7 @@ sfTkError_t sfDevAS7331::getCReg3(sfe_as7331_reg_cfg_creg3_t &creg3)
     if (!_theBus || _opMode != DEVICE_MODE_CFG)
         return ksfTkErrFail;
 
-    return _theBus->readRegisterByte(kSfeAS7331RegCfgCreg3, creg3.byte);
+    return _theBus->readRegister(kSfeAS7331RegCfgCreg3, creg3.byte);
 }
 
 sfTkError_t sfDevAS7331::setCReg3(const sfe_as7331_reg_cfg_creg3_t &creg3)
@@ -941,7 +941,7 @@ sfTkError_t sfDevAS7331::setCReg3(const sfe_as7331_reg_cfg_creg3_t &creg3)
     if (!_theBus || _opMode != DEVICE_MODE_CFG)
         return ksfTkErrFail;
 
-    return _theBus->writeRegisterByte(kSfeAS7331RegCfgCreg3, creg3.byte);
+    return _theBus->writeRegister(kSfeAS7331RegCfgCreg3, creg3.byte);
 }
 
 sfTkError_t sfDevAS7331::getBreak(uint8_t &breakReg)
@@ -950,7 +950,7 @@ sfTkError_t sfDevAS7331::getBreak(uint8_t &breakReg)
     if (!_theBus || _opMode != DEVICE_MODE_CFG)
         return ksfTkErrFail;
 
-    return _theBus->readRegisterByte(kSfeAS7331RegCfgBreak, breakReg);
+    return _theBus->readRegister(kSfeAS7331RegCfgBreak, breakReg);
 }
 
 sfTkError_t sfDevAS7331::setBreak(const uint8_t &breakReg)
@@ -959,7 +959,7 @@ sfTkError_t sfDevAS7331::setBreak(const uint8_t &breakReg)
     if (!_theBus || _opMode != DEVICE_MODE_CFG)
         return ksfTkErrFail;
 
-    return _theBus->writeRegisterByte(kSfeAS7331RegCfgBreak, breakReg);
+    return _theBus->writeRegister(kSfeAS7331RegCfgBreak, breakReg);
 }
 
 sfTkError_t sfDevAS7331::getEdges(uint8_t &edgesReg)
@@ -968,7 +968,7 @@ sfTkError_t sfDevAS7331::getEdges(uint8_t &edgesReg)
     if (!_theBus || _opMode != DEVICE_MODE_CFG)
         return ksfTkErrFail;
 
-    return _theBus->readRegisterByte(kSfeAS7331RegCfgEdges, edgesReg);
+    return _theBus->readRegister(kSfeAS7331RegCfgEdges, edgesReg);
 }
 
 sfTkError_t sfDevAS7331::setEdges(const uint8_t &edgesReg)
@@ -977,7 +977,7 @@ sfTkError_t sfDevAS7331::setEdges(const uint8_t &edgesReg)
     if (!_theBus || _opMode != DEVICE_MODE_CFG)
         return ksfTkErrFail;
 
-    return _theBus->writeRegisterByte(kSfeAS7331RegCfgEdges, edgesReg);
+    return _theBus->writeRegister(kSfeAS7331RegCfgEdges, edgesReg);
 }
 
 sfTkError_t sfDevAS7331::getOptIndex(sfe_as7331_reg_cfg_optreg_t &optReg)
@@ -986,7 +986,7 @@ sfTkError_t sfDevAS7331::getOptIndex(sfe_as7331_reg_cfg_optreg_t &optReg)
     if (!_theBus || _opMode != DEVICE_MODE_CFG)
         return ksfTkErrFail;
 
-    return _theBus->readRegisterByte(kSfeAS7331RegCfgOptReg, optReg.byte);
+    return _theBus->readRegister(kSfeAS7331RegCfgOptReg, optReg.byte);
 }
 
 sfTkError_t sfDevAS7331::setOptIndex(const sfe_as7331_reg_cfg_optreg_t &optReg)
@@ -995,7 +995,7 @@ sfTkError_t sfDevAS7331::setOptIndex(const sfe_as7331_reg_cfg_optreg_t &optReg)
     if (!_theBus || _opMode != DEVICE_MODE_CFG)
         return ksfTkErrFail;
 
-    return _theBus->writeRegisterByte(kSfeAS7331RegCfgOptReg, optReg.byte);
+    return _theBus->writeRegister(kSfeAS7331RegCfgOptReg, optReg.byte);
 }
 
 sfTkError_t sfDevAS7331::readRawUV(const as7331_uv_type &uv_type)
@@ -1033,7 +1033,7 @@ sfTkError_t sfDevAS7331::readRawUV(const as7331_uv_type &uv_type)
         break;
     }
 
-    sfTkError_t result = _theBus->readRegisterWord(regAddress, uvRawVal);
+    sfTkError_t result = _theBus->readRegister(regAddress, uvRawVal);
 
     if (ksfTkErrOk != result)
         return result;
