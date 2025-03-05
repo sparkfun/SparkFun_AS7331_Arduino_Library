@@ -1,16 +1,16 @@
 /*
   Using the AMS AS7331 Spectral UV Sensor in Synchronous Start and Stop (SYND) Mode.
 
-  This example shows how operate the AS7331 in SYND mode. This uses the active 
+  This example shows how operate the AS7331 in SYND mode. This uses the active
   low SYN pin to both start and stop the conversion. The conversion time is
-  calculated and stored in the `measures.outputConversionTime` field in units 
+  calculated and stored in the `measures.outputConversionTime` field in units
   of number of clock cycles.
 
   By: Alex Brudner
   SparkFun Electronics
   Date: 2023/11/28
   SparkFun code, firmware, and software is released under the MIT License.
-	Please see LICENSE.md for further details.
+    Please see LICENSE.md for further details.
 
   Hardware Connections:
   IoT RedBoard --> AS7331
@@ -25,74 +25,82 @@
 */
 
 #include <Arduino.h>
-#include <Wire.h>
 #include <SparkFun_AS7331.h>
+#include <Wire.h>
 
 SfeAS7331ArdI2C myUVSensor;
 
 const uint8_t synPin = 27;
 
-void setup() {
-  Serial.begin(115200);
-  while(!Serial){delay(100);};
-  Serial.println("AS7331 UV A/B/C Synchronous Start and End (SYND) mode example.");
+void setup()
+{
+    Serial.begin(115200);
+    while (!Serial)
+    {
+        delay(100);
+    };
+    Serial.println("AS7331 UV A/B/C Synchronous Start and End (SYND) mode example.");
 
-  Wire.begin();
+    Wire.begin();
 
-  // Configure SYN pin.
-  pinMode(synPin, OUTPUT);
-  digitalWrite(synPin, HIGH); // Active low, so start high.
+    // Configure SYN pin.
+    pinMode(synPin, OUTPUT);
+    digitalWrite(synPin, HIGH); // Active low, so start high.
 
-  // Initialize sensor and run default setup.
-  if(myUVSensor.begin() == false) {
-    Serial.println("Sensor failed to begin. Please check your wiring!");
-    Serial.println("Halting...");
-    while(1);
-  }
+    // Initialize sensor and run default setup.
+    if (myUVSensor.begin() == false)
+    {
+        Serial.println("Sensor failed to begin. Please check your wiring!");
+        Serial.println("Halting...");
+        while (1)
+            ;
+    }
 
-  Serial.println("Sensor began.");
+    Serial.println("Sensor began.");
 
-  // Set measurement mode and change device operating mode to measure.
-  if(myUVSensor.prepareMeasurement(MEAS_MODE_SYND) == false) {
-    Serial.println("Sensor did not get set properly.");
-    Serial.println("Halting...");
-    while(1);
-  }
+    // Set measurement mode and change device operating mode to measure.
+    if (myUVSensor.prepareMeasurement(MEAS_MODE_SYND) == false)
+    {
+        Serial.println("Sensor did not get set properly.");
+        Serial.println("Halting...");
+        while (1)
+            ;
+    }
 
-  Serial.println("Set mode to synchronous start/end (SYND). Starting measurement...");
+    Serial.println("Set mode to synchronous start/end (SYND). Starting measurement...");
 
-  // Set device to be ready to measure.
-  if(kSTkErrOk != myUVSensor.setStartState(true))
-    Serial.println("Error starting reading!");
-    
-  // Send start toggle.
-  digitalWrite(synPin, LOW);
-  delay(1);
-  digitalWrite(synPin, HIGH);
+    // Set device to be ready to measure.
+    if (ksfTkErrOk != myUVSensor.setStartState(true))
+        Serial.println("Error starting reading!");
 
+    // Send start toggle.
+    digitalWrite(synPin, LOW);
+    delay(1);
+    digitalWrite(synPin, HIGH);
 }
 
-void loop() {
-  // Delay a random period of time from 64ms (minimum for full read) and 300ms.  
-  delay(random(64,300));
+void loop()
+{
+    // Delay a random period of time from 64ms (minimum for full read) and 300ms.
+    delay(random(64, 300));
 
-  // End measurement.
-  digitalWrite(synPin, LOW);
-  delay(1);
-  digitalWrite(synPin, HIGH);
+    // End measurement.
+    digitalWrite(synPin, LOW);
+    delay(1);
+    digitalWrite(synPin, HIGH);
 
-  if(kSTkErrOk != myUVSensor.readAllUV())
-    Serial.println("Error reading UV.");
+    if (ksfTkErrOk != myUVSensor.readAllUV())
+        Serial.println("Error reading UV.");
 
-  Serial.print("UVA:");
-  Serial.print(myUVSensor.getUVA());
-  Serial.print(" UVB:");
-  Serial.print(myUVSensor.getUVB());
-  Serial.print(" UVC:");
-  Serial.println(myUVSensor.getUVC());
+    Serial.print("UVA:");
+    Serial.print(myUVSensor.getUVA());
+    Serial.print(" UVB:");
+    Serial.print(myUVSensor.getUVB());
+    Serial.print(" UVC:");
+    Serial.println(myUVSensor.getUVC());
 
-  // Start next measurement.
-  digitalWrite(synPin, LOW);
-  delay(1);
-  digitalWrite(synPin, HIGH);
+    // Start next measurement.
+    digitalWrite(synPin, LOW);
+    delay(1);
+    digitalWrite(synPin, HIGH);
 }

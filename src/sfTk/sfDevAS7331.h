@@ -1,32 +1,56 @@
-/*
-    SparkFun Spectral UV Sensor - AS7331
-
-    Qwiic 1x1
-    https://www.sparkfun.com/products/23517
-    Qwiic Mini
-    https://www.sparkfun.com/products/23518
-
-    Repository
-    https://github.com/sparkfun/SparkFun_AS7331_Arduino_Library
-
-    SPDX-License-Identifier: MIT
-
-    Copyright (c) 2023 SparkFun Electronics
-
-    Name: sfeAS7331.h
-
-    Description:
-    SfeAS7331Driver is a comms-agnostic driver for the AS7331 Spectral UV
-    sensor that uses the SparkFun Toolkit. The SfeAS7331ArdI2C class defines
-    the Arduino specific behavior for initializing and interadcting with devices.
-
-*/
+/**
+ * @file sfDevAS7331.h
+ * @brief Header file for the SparkFun Spectral UV Sensor - AS7331.
+ *
+ * This file contains the class definitions, constants, and enums for interacting with the AS7331 sensor.
+ *
+ * @details
+ * SfeAS7331Driver is a comms-agnostic driver for the AS7331 Spectral UV sensor that uses the SparkFun Toolkit.
+ * The SfeAS7331ArdI2C class defines the Arduino specific behavior for initializing and interacting with devices.
+ *
+ * @section I2C_Addressing I2C Addressing
+ * 7-bit address defined as [1, 1, 1, 0, 1, A1, A0] where A1/A0 are the physical address pins tied high or low.
+ *
+ * @section Enums Enum Definitions
+ * - Device Operating Mode
+ * - Sensor Gain
+ * - Conversion Clock Frequency
+ * - Measurement Mode
+ * - Time Conversion Values
+ * - Predivider Values
+ * - UV Type
+ *
+ * @author SparkFun Electronics
+ * @date 2025
+ * @copyright Copyright (c) 2025, SparkFun Electronics Inc. This project is released under the MIT License.
+ *
+ * SPDX-License-Identifier: MIT
+ *
+ * @section Registers Configuration Register Descriptions
+ * - Configuration Registers
+ * - Measurement Registers
+ *
+ * @section Classes Classes
+ * - sfDevAS7331
+ *
+ * @section Repository Repository
+ * https://github.com/sparkfun/SparkFun_AS7331_Arduino_Library
+ *
+ * @section Product_Links Product Links
+ * - Qwiic 1x1: https://www.sparkfun.com/products/23517
+ * - Qwiic Mini: https://www.sparkfun.com/products/23518
+ *
+ */
 
 #pragma once
 
 #include <stdint.h>
-#include <SparkFun_Toolkit.h>
 
+// include the sparkfun toolkit headers
+#include <sfTk/sfToolkit.h>
+
+// Bus interfaces
+#include <sfTk/sfTkII2C.h>
 ///////////////////////////////////////////////////////////////////////////////
 // I2C Addressing
 ///////////////////////////////////////////////////////////////////////////////
@@ -271,14 +295,14 @@ const uint8_t kSfeAS7331RegMeasOutConvH = 0x06; // LSB is MSB of OUTCONV, MSB is
 
 ///////////////////////////////////////////////////////////////////////////////
 
-class SfeAS7331Driver
+class sfDevAS7331
 {
   public:
     // Default initialization values based on the datasheet. See SfeAS7331Driver::setDefaultSettings for
     // an explanation of the values.
-    SfeAS7331Driver()
-        : _theBus{nullptr}, _breakTime{25}, _numEdges{1}, _readyPinMode{false},
-          _dividerEnabled{false}, _tempConvEnabled{true}, _indexMode{true}, _standbyState{false}, _startState{false},
+    sfDevAS7331()
+        : _theBus{nullptr}, _breakTime{25}, _numEdges{1}, _readyPinMode{false}, _dividerEnabled{false},
+          _tempConvEnabled{true}, _indexMode{true}, _standbyState{false}, _startState{false},
           _powerDownEnableState{true}, _opMode{DEVICE_MODE_CFG}, _sensorGain{GAIN_2}, _cclk{CCLK_1_024_MHZ},
           _mmode{MEAS_MODE_CMD}, _conversionTime{TIME_64MS}, _dividerRange{DIV_2}, _uva{0.0f}, _uvb{0.0f}, _uvc{0.0f},
           _temperature{0.0f}, _outputConversionTime{0U}, _conversionA{0.0f}, _conversionB{0.0f}, _conversionC{0.0f}
@@ -289,15 +313,15 @@ class SfeAS7331Driver
     /// specified bus.
     /// @param theBus Pointer to the bus object.
     /// @return True if successful, false if it fails.
-    bool begin(sfeTkIBus *theBus = nullptr);
+    bool begin(sfTkIBus *theBus = nullptr);
 
     /// @brief Requests the device ID from the sensor.
     /// @return The device ID of the sensor.
     uint8_t getDeviceID(void);
 
     /// @brief Sets the communication bus to the specified bus.
-    /// @param theBus Bus to set as the communication devie.
-    void setCommunicationBus(sfeTkIBus *theBus);
+    /// @param theBus Bus to set as the communication device.
+    void setCommunicationBus(sfTkIBus *theBus);
 
     /// @brief Helper class that sets up the sensor and state in the POR
     /// configuration.
@@ -319,38 +343,38 @@ class SfeAS7331Driver
     /// @brief Reads the sensor's temperature, converts it to a usable form, and
     /// saves it to the internal temperature variable.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t readTemp(void);
+    sfTkError_t readTemp(void);
 
     /// @brief Reads the sensor's UVA register, converts it to a usable form, and
     /// saves it to the internal UVA variable.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t readUVA(void);
+    sfTkError_t readUVA(void);
 
     /// @brief Reads the sensor's UVB register, converts it to a usable form, and
     /// saves it to the internal UVB variable.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t readUVB(void);
+    sfTkError_t readUVB(void);
 
     /// @brief Reads the sensor's UVC register, converts it to a usable form, and
     /// saves it to the internal UVC variable.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t readUVC(void);
+    sfTkError_t readUVC(void);
 
     /// @brief Read's all three UV registers, converts them to a usable form, then
     /// saves them to their respective internal variable.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t readAllUV(void);
+    sfTkError_t readAllUV(void);
 
     /// @brief Read the sensor's temperature, UV, and external time conversion
     /// clock counts, converts them, and then saves them to their respective
     /// internal variable.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t readAll(void);
+    sfTkError_t readAll(void);
 
     /// @brief Read the conversion clock counts register and saves it to the
     /// internal output conversion time variable.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t readOutConv(void);
+    sfTkError_t readOutConv(void);
 
     /// @brief Returns the last valid UVA reading.
     /// @return A float of the UVA reading.
@@ -383,7 +407,7 @@ class SfeAS7331Driver
     /// @brief Sets the UV sensor's gain.
     /// @param gain The gain to set the sensor to.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t setGain(const as7331_gain_t &gain);
+    sfTkError_t setGain(const as7331_gain_t &gain);
 
     /// @brief Getter for the currently configured conversion clock.
     /// @return Sensor's conversion clock expressed as 1024*(1 << cclk).
@@ -396,7 +420,7 @@ class SfeAS7331Driver
     /// @brief Set the sensor's internal clock speed.
     /// @param cclk Clock speed to set on the sensor.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t setCClk(const as7331_conv_clk_freq_t &cclk);
+    sfTkError_t setCClk(const as7331_conv_clk_freq_t &cclk);
 
     /// @brief Getter for the currently configured conversion time.
     /// @return Sensor's conversion time expressed as (1 << time).
@@ -409,7 +433,7 @@ class SfeAS7331Driver
     /// @brief Sets the conversion time that the sensor will run to.
     /// @param convTime Conversion time to set the sensor to.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t setConversionTime(const as7331_conv_time_t &convTime);
+    sfTkError_t setConversionTime(const as7331_conv_time_t &convTime);
 
     /// @brief Getter for the currently configured pin mode.
     /// @return False if push-pull, true if open-drain.
@@ -418,7 +442,7 @@ class SfeAS7331Driver
     /// @brief Sets the ready pin type to push-pull or open-drain.
     /// @param pinMode Mode to set the ready pin to.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t setReadyPinMode(const bool &pinMode);
+    sfTkError_t setReadyPinMode(const bool &pinMode);
 
     /// @brief Getter for the currently configured divider status.
     /// @return True if Internal predivider is enabled, false otherwise.
@@ -427,7 +451,7 @@ class SfeAS7331Driver
     /// @brief Enables or disables the internal UV result divider.
     /// @param isEnabled Enable or disable the divder.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t setDigitalDividerEnabled(const bool &isEnabled);
+    sfTkError_t setDigitalDividerEnabled(const bool &isEnabled);
 
     /// @brief Getter for the currently configured divider range.
     /// @return Sensor's internal UV predivider range.
@@ -437,7 +461,7 @@ class SfeAS7331Driver
     /// @param divider Divider value to set.
     /// @param setEnableDiv Option to turn on the divider if desired.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t setDigitalDividerRange(const as7331_divider_val_t &divider, const bool &enableDiv = true);
+    sfTkError_t setDigitalDividerRange(const as7331_divider_val_t &divider, const bool &enableDiv = true);
 
     /// @brief Getter for the SYND temperature conversion status.
     /// @return True if temperature conversion is enabled in SYND mode.
@@ -446,7 +470,7 @@ class SfeAS7331Driver
     /// @brief Enables or disables temperature conversion when in SYND mode.
     /// @param isEnabled Enable or disable the feature.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t setSyndTempConversionEnabled(const bool &isEnabled);
+    sfTkError_t setSyndTempConversionEnabled(const bool &isEnabled);
 
     /// @brief Getter for the currently configured I2C compatibility mode.
     /// @return True if the device will respond to repeat starts, false otherwise.
@@ -456,7 +480,7 @@ class SfeAS7331Driver
     /// don't support repeated start.
     /// @param indexMode Simple or standard I2C addressing mode.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t setIndexMode(const bool &indexMode);
+    sfTkError_t setIndexMode(const bool &indexMode);
 
     /// @brief Getter for the currently configured minimum break time in CONT,
     /// CMD, SYNS modes.
@@ -467,7 +491,7 @@ class SfeAS7331Driver
     /// @param breakTime Time between measurements, 8us step time, max 2048us. A 0
     /// value is a minimum of 3 cclk cycles.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t setBreakTime(const uint8_t &breakTime);
+    sfTkError_t setBreakTime(const uint8_t &breakTime);
 
     /// @brief Getter for the currently configured minimum number of edges to end
     /// conversion when in SYND mode.
@@ -479,7 +503,7 @@ class SfeAS7331Driver
     /// @param numEdges Number of edges prior to terminating conversion in SYND
     /// mode. 0 is not allowed, 1 is the minimum.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t setNumEdges(const uint8_t &numEdges);
+    sfTkError_t setNumEdges(const uint8_t &numEdges);
 
     /// @brief Getter for the current power state.
     /// @return Sensor's power state.
@@ -488,7 +512,7 @@ class SfeAS7331Driver
     /// @brief Sets the power state of the sensor.
     /// @param pd Power state to set.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t setPowerDownState(const bool &pd);
+    sfTkError_t setPowerDownState(const bool &pd);
 
     /// @brief Getter for the current operational state.
     /// @return Sensor's operational mode.
@@ -497,7 +521,7 @@ class SfeAS7331Driver
     /// @brief Set the sensor's operating mode.
     /// @param opMode Operating mode to set.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t setOperationMode(const as7331_dev_op_state_t &opMode);
+    sfTkError_t setOperationMode(const as7331_dev_op_state_t &opMode);
 
     /// @brief Getter for the current measurement state.
     /// @return Sensor's measurement state.
@@ -506,7 +530,7 @@ class SfeAS7331Driver
     /// @brief Sets the sensor's measurement mode.
     /// @param measMode Measurement mode to set.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t setMeasurementMode(const as7331_meas_mode_t &measMode);
+    sfTkError_t setMeasurementMode(const as7331_meas_mode_t &measMode);
 
     /// @brief Getter for the current standby state.
     /// @return Sensor's standby state.
@@ -515,7 +539,7 @@ class SfeAS7331Driver
     /// @brief Sets the sensor's standby mode.
     /// @param standby State to set.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t setStandbyState(const bool &standby);
+    sfTkError_t setStandbyState(const bool &standby);
 
     /// @brief Getter for the current start state.
     /// @return Sensor's start state.
@@ -524,112 +548,112 @@ class SfeAS7331Driver
     /// @brief Sets the sensor's start state. This begins measurement.
     /// @param startState Start state to set.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t setStartState(const bool &startState);
+    sfTkError_t setStartState(const bool &startState);
 
     /// @brief Gets the sensor's status when in measurement operation mode.
     /// @param statusReg Pointer to a register struct to store the sensor's
     /// current status.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t getStatus(sfe_as7331_reg_meas_osr_status_t &statusReg);
+    sfTkError_t getStatus(sfe_as7331_reg_meas_osr_status_t &statusReg);
 
     /// @brief Gets the operational state register when in configuration operation
     /// mode.
     /// @param osrReg Pointer to a register struct to store the sensor's current
     /// OSR register.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t getOSR(sfe_as7331_reg_cfg_osr_t &osrReg);
+    sfTkError_t getOSR(sfe_as7331_reg_cfg_osr_t &osrReg);
 
     /// @brief Sets the operational state register when in configuration operation
     /// mode.
     /// @param osrReg Pointer to a register struct that has the new register
     /// configuration.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t setOSR(const sfe_as7331_reg_cfg_osr_t &osrReg);
+    sfTkError_t setOSR(const sfe_as7331_reg_cfg_osr_t &osrReg);
 
     /// @brief Gets the configuration register #1 when in configuration operation
     /// mode.
     /// @param creg1 Pointer to a register struct to store the sensor's current
     /// creg1 register.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t getCReg1(sfe_as7331_reg_cfg_creg1_t &creg1);
+    sfTkError_t getCReg1(sfe_as7331_reg_cfg_creg1_t &creg1);
 
     /// @brief Sets the configuration register #1 when in configuration operation
     /// mode.
     /// @param creg1 Pointer to a register struct that has the new register
     /// configuration.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t setCReg1(const sfe_as7331_reg_cfg_creg1_t &creg1);
+    sfTkError_t setCReg1(const sfe_as7331_reg_cfg_creg1_t &creg1);
 
     /// @brief Gets the configuration register #2 when in configuration operation
     /// mode.
     /// @param creg2 Pointer to a register struct to store the sensor's current
     /// creg2 register.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t getCReg2(sfe_as7331_reg_cfg_creg2_t &creg2);
+    sfTkError_t getCReg2(sfe_as7331_reg_cfg_creg2_t &creg2);
 
     /// @brief Sets the configuration register #2 when in configuration operation
     /// mode.
     /// @param creg2 Pointer to a register struct that has the new register
     /// configuration.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t setCReg2(const sfe_as7331_reg_cfg_creg2_t &creg2);
+    sfTkError_t setCReg2(const sfe_as7331_reg_cfg_creg2_t &creg2);
 
     /// @brief Gets the configuration register #3 when in configuration operation
     /// mode.
     /// @param creg3 Pointer to a register struct to store the sensor's current
     /// creg3 register.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t getCReg3(sfe_as7331_reg_cfg_creg3_t &creg3);
+    sfTkError_t getCReg3(sfe_as7331_reg_cfg_creg3_t &creg3);
 
     /// @brief Sets the configuration register #3 when in configuration operation
     /// mode.
     /// @param creg3 Pointer to a register struct that has the new register
     /// configuration.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t setCReg3(const sfe_as7331_reg_cfg_creg3_t &creg3);
+    sfTkError_t setCReg3(const sfe_as7331_reg_cfg_creg3_t &creg3);
 
     /// @brief Gets the break register when in configuration operation mode.
     /// @param breakReg Pointer to a register struct to store the sensor's current
     /// break register.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t getBreak(uint8_t &breakReg);
+    sfTkError_t getBreak(uint8_t &breakReg);
 
     /// @brief Sets the break register when in configuration operation mode.
     /// @param breakReg Pointer to a register struct that has the new register
     /// configuration.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t setBreak(const uint8_t &breakReg);
+    sfTkError_t setBreak(const uint8_t &breakReg);
 
     /// @brief Gets the edges register when in configuration operation mode.
     /// @param edgesReg Pointer to a register struct to store the sensor's current
     /// edges register.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t getEdges(uint8_t &edgesReg);
+    sfTkError_t getEdges(uint8_t &edgesReg);
 
     /// @brief Sets the edges register when in configuration operation mode.
     /// @param edgesReg Pointer to a register struct that has the new register
     /// configuration.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t setEdges(const uint8_t &edgesReg);
+    sfTkError_t setEdges(const uint8_t &edgesReg);
 
     /// @brief Gets the option register when in configuration operation mode.
     /// @param optReg Pointer to a register struct to store the sensor's current
     /// option register.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t getOptIndex(sfe_as7331_reg_cfg_optreg_t &optReg);
+    sfTkError_t getOptIndex(sfe_as7331_reg_cfg_optreg_t &optReg);
 
     /// @brief Sets the option register when in configuration operation mode.
     /// @param optReg Pointer to a register struct that has the new register
     /// configuration.
     /// @return 0 if successful, negative if error, positive for warning.
-    sfeTkError_t setOptIndex(const sfe_as7331_reg_cfg_optreg_t &optReg);
+    sfTkError_t setOptIndex(const sfe_as7331_reg_cfg_optreg_t &optReg);
 
   private:
     /// @brief Reads a UV result register and saves it to the respective internal
     /// variable.
     /// @param uv_type The type of UV you want to read.
     /// @return 0 if successful, negative if error, positive if warning
-    sfeTkError_t readRawUV(const as7331_uv_type &uv_type);
+    sfTkError_t readRawUV(const as7331_uv_type &uv_type);
 
     /// @brief Converts the raw temperature value to a human readable form.
     /// @param inputVal Raw temperature value to convert.
@@ -650,7 +674,7 @@ class SfeAS7331Driver
     /// @brief Called to reset all local values back to initial conditions.
     void setDefaultSettings(void);
 
-    sfeTkIBus *_theBus;  // Pointer to bus device.
+    sfTkIBus *_theBus; // Pointer to bus device.
 
     uint8_t _breakTime; // Local config value. Value is in us/8. EX: _breakTime = 20 means 20*8 = 160us.
     uint8_t _numEdges;  // Local config value. Edges seen on SYN pin before ending conversion in SYND mode.
